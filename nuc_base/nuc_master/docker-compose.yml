@@ -3,16 +3,16 @@ configs:
     file: "./spec/vss.json"
 
 services:
-  bridge-joystick:
+  serial-kuksa-bridge:
     build:
-      context: ./bridge-joystick
-    container_name: bridge-joystick
+      context: ./serial-kuksa-bridge
+    container_name: serial-kuksa-bridge
     #network_mode: "host"
     devices:
       - "/dev/arduino_joystick:/dev/arduino_joystick"
       - "/dev/arduino_led:/dev/arduino_led"
     volumes:
-      - ./bridge-joystick:/app
+      - ./serial-kuksa-bridge:/app
     working_dir: /app
     command: python3 bridge.py
     environment:

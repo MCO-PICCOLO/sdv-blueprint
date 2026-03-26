@@ -8,9 +8,10 @@
   Component: Joystick Module
 */
 
-const int xPin = A0;  //the VRX attach to
-const int yPin = A1;  //the VRY attach to
-const int swPin = 8;  //the SW attach to
+const int xPin = A0; // Joystick X axis
+const int yPin = A1; // Joystick Y axis
+const int swPin = 8; // Joystick button
+const unsigned long READ_DELAY_MS = 100; // ms
 
 void setup() {
     Serial.begin(115200);
@@ -25,14 +26,9 @@ void loop() {
     int y = analogRead(yPin);
     int btn = digitalRead(swPin);
 
-    Serial.print(t);
-    Serial.print(",");
-    Serial.print(x);
-    Serial.print(",");
-    Serial.print(y);
-    Serial.print(",");
-    Serial.println(btn);
+    String line = String(t) + "," + String(x) + "," + String(y) + "," + String(btn);
+    Serial.println(line);
 
-    delay(50);
+    delay(READ_DELAY_MS);
 }
 

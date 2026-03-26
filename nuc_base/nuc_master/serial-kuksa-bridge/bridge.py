@@ -1,9 +1,11 @@
-import serial, sys, re
-from kuksa_client import KuksaClientThread as KuksaClient
-from kuksa_client.grpc import Datapoint
+import serial
+import sys
+import re
 import threading
 import queue
 import json
+from kuksa_client import KuksaClientThread
+from kuksa_client.grpc import Datapoint
 
 PORT_STICK = "/dev/arduino_joystick"
 PORT_LED = "/dev/arduino_led"
@@ -55,8 +57,8 @@ def main():
         last_x = 512
         last_btn = 1
 
-        client = KuksaClient(config={'protocol': 'grpc', 'ip': 'databroker', 'port': 55555, 'insecure': True})
-        #client = KuksaClient(config={'url': 'grpc://databroker:55555', 'insecure': True})
+        client = KuksaClientThread(config={'protocol': 'grpc', 'ip': 'databroker', 'port': 55555, 'insecure': True})
+        #client = KuksaClientThread(config={'url': 'grpc://databroker:55555', 'insecure': True})
         client.start()
 
         q = queue.Queue()
