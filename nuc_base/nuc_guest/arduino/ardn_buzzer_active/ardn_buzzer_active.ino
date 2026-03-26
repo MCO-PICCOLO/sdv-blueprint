@@ -15,8 +15,14 @@ void setup()
 
 void loop()
 {
-    digitalWrite(DigitalPin, HIGH);
-    delay(100);
-    digitalWrite(DigitalPin, LOW);
-    delay(10000);
+    if (Serial.available() > 0) {
+        char c = Serial.read();
+        if (c == '1') {
+            digitalWrite(DigitalPin, HIGH); // ON
+        } else if (c == '0') {
+            digitalWrite(DigitalPin, LOW);  // OFF
+        }
+    }
+
+    delay(10);
 }

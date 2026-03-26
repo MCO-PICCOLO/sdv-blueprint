@@ -7,6 +7,10 @@ import time
 from kuksa_client import KuksaClientThread
 from kuksa_client.grpc import Datapoint
 
+PORT_ACTIVE = "/dev/arduino_active"
+PORT_PASSIVE = "/dev/arduino_passive"
+BAUD = 115200
+
 def recv_to_databroker(client):
     try:
         #l = client.getValue("Vehicle.Body.Lights.DirectionIndicator.Left.IsSignaling")
@@ -36,10 +40,19 @@ def main():
     #client = KuksaClientThread(config={'url': 'grpc://192.168.1.2:55555', 'insecure': True})
     client.start()
 
-    while True:
-        isBrake = recv_to_databroker(client)
-        print(f"isBrake: {isBrake}")
-        time.sleep(0.1)
+    with serial.Serial(PORT_ACTIVE, BAUD, timeout=0) as s_ac, \
+         serial.Serial(PORT_PASSIVE, BAUD, timeout=0) as s_pa:
+        while True:
+            isBrake = recv_to_databroker(client)
+            print(f"isBrake: {isBrake}")
+
+            msg = b"1" if isBrake else b"0"
+            s_ac.write(msg)
+            s_pa.write(msg)
+            s_ac.flush()
+            s_pa.flush()
+
+            time.sleep(0.1)
 
 if __name__ == "__main__":
     try:

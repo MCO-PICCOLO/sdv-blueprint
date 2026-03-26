@@ -4,6 +4,10 @@ x86_64 아키텍처의 CentOS Stream 사용하는 NUC 에서 진행
 
 ## 사전 준비
 
+### Buzzer 구분
+
+똑같이 생겼는데, buzzer 에 하얀 스티커 붙어있는 장치가 active buzzer, 스티커 없이 검정 장치만 있으면 passive buzzer 이다.
+
 ### Device 경로
 
 장치 연결 할 때마다, `/dev/ttyACMx` 경로가 바뀔 수 있기 때문에 고정 필요
@@ -12,10 +16,10 @@ x86_64 아키텍처의 CentOS Stream 사용하는 NUC 에서 진행
 
 ```
 # Active buzzer Arduino
-SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="48CA435E506C", SYMLINK+="arduino_active"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="3CDC75F04E2C", SYMLINK+="arduino_active"
 
 # Passive buzzer Arduino
-SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="F0F5BD507E9C", SYMLINK+="arduino_passive"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="3CDC75F03F08", SYMLINK+="arduino_passive"
 ```
 
 여기서 `2341` 은 Arduino 사의 vendor code 이고, 각 장치의 serial은 아래 command로 확인 가능하다. 

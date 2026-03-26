@@ -15,11 +15,14 @@ void setup()
 
 void loop()
 {
-    // Play a tone with a frequency of 1000 Hz for 1 second
-    tone(DigitalPin, 1000, 100); 
-    delay(100); // Wait for the tone duration
+    if (Serial.available() > 0) {
+        char c = Serial.read();
+        if (c == '1') {
+            tone(DigitalPin, 1000); // 1000Hz ON
+        } else if (c == '0') {
+            noTone(DigitalPin);     // OFF
+        }
+    }
 
-    // Stop the tone for 1 second (noTone() stops the current tone)
-    noTone(DigitalPin);
-    delay(10000);
+    delay(10);
 }
