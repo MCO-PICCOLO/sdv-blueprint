@@ -4,6 +4,9 @@ import re
 import threading
 import queue
 import json
+import requests
+import time
+
 from kuksa_client import KuksaClientThread
 from kuksa_client.grpc import Datapoint
 
@@ -68,30 +71,30 @@ def handle_pullpiri_yaml():
             if line.isdigit():
                 if line == "0":
                     print("LOW FREQ")
-                    send_yaml_artifact('./yaml/buzzer-active-terminate.yaml')
+                    send_yaml_artifact('/yaml/buzzer-active-terminate.yaml')
                     time.sleep(2)
-                    send_yaml_artifact('./yaml/buzzer-passive-launch.yaml')
+                    send_yaml_artifact('/yaml/buzzer-passive-launch.yaml')
                 elif line == "1":
                     print("HIGH FREQ")
-                    send_yaml_artifact('./yaml/buzzer-passive-terminate.yaml')
+                    send_yaml_artifact('/yaml/buzzer-passive-terminate.yaml')
                     time.sleep(2)
-                    send_yaml_artifact('./yaml/buzzer-active-launch.yaml')
-            import requests
-            def send_yaml_artifact(yaml_path: str):
-                url = 'http://192.168.1.2:47099/api/artifact'
-                try:
-                    with open(yaml_path, 'r', encoding='utf-8') as f:
-                        body = f.read()
-                    headers = {'Content-Type': 'text/plain'}
-                    response = requests.post(url, headers=headers, data=body)
-                    print(f"[POST] {url} status={response.status_code}")
-                    if response.status_code != 200:
-                        print(f"Response: {response.text}")
-                except Exception as e:
-                    print(f"send_yaml_artifact error: {e}", file=sys.stderr)
+                    send_yaml_artifact('/yaml/buzzer-active-launch.yaml')
             else:
                 print(f"Message: {line}")
             time.sleep(0.05)
+
+def send_yaml_artifact(yaml_path: str):
+        url = 'http://192.168.1.2:47099/api/artifact'
+        try:
+            with open(yaml_path, 'r', encoding='utf-8') as f:
+                body = f.read()
+            headers = {'Content-Type': 'text/plain'}
+            response = requests.post(url, headers=headers, data=body)
+            print(f"[POST] {url} status={response.status_code}")
+            if response.status_code != 200:
+                print(f"Response: {response.text}")
+        except Exception as e:
+            print(f"send_yaml_artifact error: {e}", file=sys.stderr)
 
 def main():
     with serial.Serial(PORT_STICK, BAUD, timeout=0) as s_in, \

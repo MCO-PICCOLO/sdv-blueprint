@@ -11,9 +11,10 @@ services:
     devices:
       - "/dev/arduino_joystick:/dev/arduino_joystick"
       - "/dev/arduino_led:/dev/arduino_led"
+      - "/dev/arduino_gear:/dev/arduino_gear"
     volumes:
       - ./serial-kuksa-bridge:/app
-      - ./pullpiri-yaml/yaml:/app/yaml
+      - ./pullpiri-yaml/yaml:/yaml
     working_dir: /app
     command: python3 bridge.py
     environment:
