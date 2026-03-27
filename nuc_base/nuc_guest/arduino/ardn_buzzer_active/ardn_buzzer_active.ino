@@ -3,14 +3,29 @@
 // Board : Arduino Uno 
 // By : Kit Plus
 //*******************************************************************************
+#include <Adafruit_NeoPixel.h>
 
-int DigitalPin = 7;  // Digital input
+#define BUZZER_PIN 7
+#define LED_PIN 6
+#define N_LEDS 8
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(N_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+const uint32_t RED = Adafruit_NeoPixel::Color(255, 0, 0);
+const uint32_t OFF = 0;
 
 void setup()
 {
-    pinMode(DigitalPin, OUTPUT);
+    pinMode(BUZZER_PIN, OUTPUT);
     Serial.begin(115200);
     while (!Serial) { }
+}
+
+void showAll(uint32_t c) {
+    for (uint16_t i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, c);
+    }
+    strip.show();
 }
 
 void loop()
@@ -18,9 +33,11 @@ void loop()
     if (Serial.available() > 0) {
         char c = Serial.read();
         if (c == '1') {
-            digitalWrite(DigitalPin, HIGH); // ON
+            digitalWrite(BUZZER_PIN, HIGH); // SOUND ON
+            showAll(RED);
         } else if (c == '0') {
-            digitalWrite(DigitalPin, LOW);  // OFF
+            digitalWrite(BUZZER_PIN, LOW);  // SOUND OFF
+            showAll(OFF);
         }
     }
 
