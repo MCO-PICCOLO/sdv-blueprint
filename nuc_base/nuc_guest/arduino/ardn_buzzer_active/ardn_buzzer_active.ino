@@ -16,6 +16,10 @@ const uint32_t OFF = 0;
 
 void setup()
 {
+    strip.setBrightness(100);
+    strip.begin();
+    showAll(OFF);
+
     pinMode(BUZZER_PIN, OUTPUT);
     Serial.begin(115200);
     while (!Serial) { }
