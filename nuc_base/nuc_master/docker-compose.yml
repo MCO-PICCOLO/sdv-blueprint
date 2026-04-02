@@ -18,7 +18,8 @@ services:
     working_dir: /app
     command: python3 bridge.py
     environment:
-      - PYTHONUNBUFFERED=1
+      PYTHONUNBUFFERED: "1"
+      MASTER_IP: "192.168.1.2"
 
   databroker:
     image: "quay.io/eclipse-kuksa/kuksa-databroker:0.6.0"

@@ -36,6 +36,9 @@ spec:
   containers:
     - name: buzzer-active
       image: localhost/kuksa-serial-bridge:latest
+      env:
+      - name: MASTER_IP
+        value: "192.168.1.2"
       securityContext:
         privileged: true
       volumeMounts:

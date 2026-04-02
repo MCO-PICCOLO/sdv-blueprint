@@ -4,6 +4,7 @@ import threading
 import queue
 import json
 import time
+import os
 from kuksa_client import KuksaClientThread
 from kuksa_client.grpc import Datapoint
 
@@ -38,7 +39,8 @@ def recv_to_databroker(client):
 
 
 def main(stop_event):
-    client = KuksaClientThread(config={'protocol': 'grpc', 'ip': '192.168.1.2', 'port': 55555, 'insecure': True})
+    master_ip = os.environ.get('MASTER_IP', '192.168.1.2')
+    client = KuksaClientThread(config={'protocol': 'grpc', 'ip': master_ip, 'port': 55555, 'insecure': True})
     client.start()
     while not stop_event.is_set():
         try:

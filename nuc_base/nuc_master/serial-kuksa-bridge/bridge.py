@@ -6,6 +6,7 @@ import queue
 import json
 import requests
 import time
+import os
 
 from kuksa_client import KuksaClientThread
 from kuksa_client.grpc import Datapoint
@@ -102,17 +103,18 @@ def handle_pullpiri_yaml(stop_event):
             time.sleep(1)
 
 def send_yaml_artifact(yaml_path: str):
-        url = 'http://192.168.1.2:47099/api/artifact'
-        try:
-            with open(yaml_path, 'r', encoding='utf-8') as f:
-                body = f.read()
-            headers = {'Content-Type': 'text/plain'}
-            response = requests.post(url, headers=headers, data=body)
-            print(f"[POST] {url} status={response.status_code}")
-            if response.status_code != 200:
-                print(f"Response: {response.text}")
-        except Exception as e:
-            print(f"send_yaml_artifact error: {e}", file=sys.stderr)
+    master_ip = os.environ.get('MASTER_IP', '192.168.1.2')
+    url = f'http://{master_ip}:47099/api/artifact'
+    try:
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            body = f.read()
+        headers = {'Content-Type': 'text/plain'}
+        response = requests.post(url, headers=headers, data=body)
+        print(f"[POST] {url} status={response.status_code}")
+        if response.status_code != 200:
+            print(f"Response: {response.text}")
+    except Exception as e:
+        print(f"send_yaml_artifact error: {e}", file=sys.stderr)
 
 
 def main(q, stop_event):
