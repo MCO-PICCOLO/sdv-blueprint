@@ -1,14 +1,14 @@
 # Demo with NUC
 
-x86_64 아키텍처의 CentOS Stream 사용하는 NUC 에서 진행
+The following instructions are based on a CentOS Stream environment with x86_64 architecture.
 
-## 사전 준비
+## Prerequisites
 
-### Device 경로
+### Device Paths
 
-장치 연결 할 때마다, `/dev/ttyACMx` 경로가 바뀔 수 있기 때문에 고정 필요
+Since the device path `/dev/ttyACMx` may change each time a device is connected, it needs to be fixed using udev rules.
 
-`99-arduino.rules` 파일은 다음과 같이 구성되어 있음
+The `99-arduino.rules` file is structured as follows:
 
 ```
 # Joystick Arduino
@@ -16,17 +16,20 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="48CA435E506C", SYMLIN
 
 # LED Arduino
 SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="F0F5BD507E9C", SYMLINK+="arduino_led"
+
+# Gear Arduino
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{serial}=="D885ACA7070C", SYMLINK+="arduino_gear"
 ```
 
-여기서 `2341` 은 Arduino 사의 vendor code 이고, 각 장치의 serial은 아래 command로 확인 가능하다. 
+Here, `2341` is Arduino's vendor code, and each device's serial number can be found using the following command:
 
 ```
 udevadm info -a -n /dev/ttyACM0 | grep '{serial}' -m 1
 ```
 
-`ttyACM0` 은 Arduino device 붙을 때마다 숫자가 증가한다. `arduino-cli board list` command 로 어떤 경로에 붙었는지 알 수 있다.
+The number in `ttyACM0` increments each time an Arduino device is connected. Use the `arduino-cli board list` command to identify which path the device is attached to.
 
-최종적으로 다음 command를 실행하여 잘 생성되었는지 확인
+Finally, execute the following commands to apply the rules and verify creation:
 
 ```
 sudo cp 99-arduino.rules /etc/udev/rules.d/99-arduino.rules
@@ -35,46 +38,46 @@ sudo udevadm trigger
 ls -al /dev/arduino_*
 ```
 
-## Compile
+## Compilation
 
-또한 LED 사용을 위해 다음 library 설치가 필요하다.
+For LED control, the following library installation is required:
 ```
 arduino-cli lib install "Adafruit NeoPixel"
 ```
 
-컴파일은 `compile.sh` 을 실행하면 된다. compile 을 위해서는 `ino` 파일명과 폴더명이 동일해야 한다.
+To compile, execute `compile.sh`. Note that the `.ino` filename and folder name must match for compilation to succeed.
 
 ```sh
 arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_stick
 arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_led
+arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_gear
 ```
 
-컴파일이 잘 끝나면 다음과 같이 로그들이 나온다.
+Upon successful compilation, you should see output similar to:
 ```
 Sketch uses 52224 bytes (19%) of program storage space. Maximum is 262144 bytes.
 Global variables use 6740 bytes (20%) of dynamic memory, leaving 26028 bytes for local variables. Maximum is 32768 bytes.
 ```
 
-## Install
+## Installation
 
-설치도 `install.sh` 을 실행하면 된다. 다만 주의사항이 있다.
+To install, execute `install.sh`. However, there's an important caveat:
 
 ```sh
 arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:renesas_uno:unor4wifi ardn_stick
 arduino-cli upload -p /dev/ttyACM1 --fqbn arduino:renesas_uno:unor4wifi ardn_led
+arduino-cli upload -p /dev/ttyACM2 --fqbn arduino:renesas_uno:unor4wifi ardn_gear
 ```
 
-위 스크립트에서 보듯이 `/dev/arduino_*` 이 아니라 original 경로가 들어가야 설치가 된다.
-그러므로 `ls -al /dev/arduino_*` 을 통해 폴더와 디바이스 경로를 정확히 맞춰줘야 한다.
+As shown in the script above, you must use the original device path (e.g., `/dev/ttyACMx`) instead of `/dev/arduino_*` for the upload to succeed.
+Therefore, use `ls -al /dev/arduino_*` to correctly match the folder with the actual device path.
 
 ```
 # ls -al /dev/arduino_*
 lrwxrwxrwx 1 root root 7 Mar 24 15:17 /dev/arduino_joystick -> ttyACM0
 lrwxrwxrwx 1 root root 7 Mar 24 15:17 /dev/arduino_led -> ttyACM1
+lrwxrwxrwx 1 root root 7 Mar 24 15:17 /dev/arduino_gear -> ttyACM2
 ```
 
-이 경우는 조이스틱이 `/dev/ttyACM0` 에 연결되었기 때문에 설치 스크립트의 첫번째에 `ACM0` 이 있어야 한다.
+In this example, the joystick is connected to `/dev/ttyACM0`, so the first entry in the installation script should reference `ACM0`.
 
-## Run
-
-`run.sh` 실행 후 조이스틱을 움직이거나 누르면 LED 가 반응한다.

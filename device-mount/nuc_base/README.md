@@ -15,13 +15,7 @@ Once the Arduino code is installed, it operates automatically whenever the seria
 - Arduino LED: Illuminates LED strips in response to left, right, and button press actions.
 - Arduino Gear: Detects clockwise/counterclockwise angular velocity and sends Pullpiri Scenario data to the Pullpiri api-server.
 
-The remaining containers are launched using Pullpiri scenario or `docker-compose.yml`. Use the following commands for up/down operations:
-
-```sh
-# for pullpiri
-./scenario.sh 1 # launch
-./scenario.sh 2 # terminate
-```
+The remaining containers are launched using `docker-compose.yml`. Use the following commands for up/down operations:
 
 ```sh
 # for docker-compose

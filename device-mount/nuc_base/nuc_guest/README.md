@@ -1,10 +1,10 @@
 # Demo with NUC
 
-x86_64 아키텍처의 CentOS Stream 사용하는 NUC 에서 진행
+The following instructions are based on a CentOS Stream environment with x86_64 architecture.
 
-## Arduino 설치
+## About Arduino 
 
-[arduino](./arduino/README.md) 참조
+[arduino](./arduino/README.md)
 
 ## Docker image
 
