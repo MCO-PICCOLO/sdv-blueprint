@@ -1,5 +1,5 @@
 # SDV Blueprint Demo
 
-NUC base 로 진행중이며, RPi5 base 로 향후 진행 예정
+It is currently being developed based on the x86_64 NUC, and is planned to be developed based on the RaspberryPi5 in the future.
 
-참조 : [eclipse-sdv-e2e-demo-blueprint](https://github.com/chheis/eclipse-sdv-e2e-demo-blueprint)
+Reference : [eclipse-sdv-e2e-demo-blueprint](https://github.com/chheis/eclipse-sdv-e2e-demo-blueprint)
