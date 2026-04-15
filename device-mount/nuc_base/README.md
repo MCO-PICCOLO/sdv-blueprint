@@ -2,6 +2,34 @@
 
 This demo is conducted on two NUCs running CentOS Stream with x86_64 architecture. Each NUC serves as either a master node or a guest node, with Pullpiri installed on both.
 
+## Prerequisites
+
+The following steps must be completed on both the master and guest nodes.
+
+### Arduino CLI
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/bin sh
+```
+
+(Optional) Bash completion
+
+```sh
+arduino-cli completion bash > arduino-cli.sh
+sudo mv arduino-cli.sh /etc/bash_completion.d/
+```
+
+You must install the Arduino Uno platform with the following command to enable compilation:
+```
+arduino-cli core install arduino:renesas_uno
+```
+
+### Add Device Group Permission
+
+```
+sudo usermod -aG dialout $USER
+```
+
 ## Overall Architecture
 
 Two NUCs serve as the Pullpiri master node and guest node respectively.
@@ -41,40 +69,6 @@ For this purpose, you must build the container image with the name `localhost/ku
 ```sh
 cd nuc_base/nuc_guest/kuksa-serial-bridge
 podman build -t localhost/kuksa-serial-bridge:latest .
-```
-
-## Prerequisites
-
-The following steps must be completed on both the master and guest nodes.
-
-### Arduino CLI
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/bin sh
-```
-
-(Optional) Bash completion
-
-```sh
-arduino-cli completion bash > arduino-cli.sh
-sudo mv arduino-cli.sh /etc/bash_completion.d/
-```
-
-You must install the Arduino Uno platform with the following command to enable compilation:
-```
-arduino-cli core install arduino:renesas_uno
-```
-
-### Python
-Assumes Python 3 is installed.
-If you encounter an error indicating that serial.Serial is missing when running `run.sh`, install the package with `pip install pyserial`.
-
-> Note - You must install `pyserial`, not `serial`
-
-### Add Device Group Permission
-
-```
-sudo usermod -aG dialout $USER
 ```
 
 ## Next Steps
