@@ -81,120 +81,130 @@ Even when CPU load increases on the guest NUC, this workload is expected to main
 
 The user turns Arduino B clockwise and presses the rotary button.
 
-```text
-Arduino B Rotary Input
-        |
-        v
-Master NUC
-        |
-        v
-Pullpiri scenario trigger
-        |
-        v
-Guest NUC
-        |
-        +--> Launch normal scenario workload
-        |
-        +--> Launch Timpani-scheduled scenario workload
+
+```mermaid
+sequenceDiagram
+    participant USER as User
+    participant ARD_B as Arduino B<br/>Rotary
+    participant INPUT as Input Adapter<br/>NUC1
+    participant PULLPIRI as Pullpiri<br/>Master
+    participant PULLPIRI_G as Pullpiri<br/>Guest/Agent
+    participant PODMAN as Execution<br/>Manager
+    participant WL_C as Workload C<br/>(sleep)
+    participant WL_D as Workload D<br/>(Timpani)
+    participant ARD_C as Arduino C<br/>LED
+    participant ARD_D as Arduino D<br/>LED
+    
+    USER->>ARD_B: Turn Clockwise + Press Button
+    ARD_B->>INPUT: Rotary Direction = CW
+    INPUT->>PULLPIRI: Signal Update
+    
+    Note over PULLPIRI: Scenario Trigger Detected
+    
+    PULLPIRI->>PULLPIRI_G: Launch Scenario Workloads
+    PULLPIRI_G->>PODMAN: Request Launch WL_C
+    PULLPIRI_G->>PODMAN: Request Launch WL_D
+    
+    par Workload Startup
+        PODMAN->>WL_C: Process Start
+        WL_C->>WL_C: Initialize
+        WL_C->>ARD_C: Ready (LED off)
+    and
+        EM->>WL_D: Process Start
+        WL_D->>WL_D: Initialize (Timpani-managed)
+        WL_D->>ARD_D: Ready (LED off)
+    end
+    
+    Note over WL_C,WL_D: Both Workloads Running
+    
+    loop Every 500ms - Workload C (sleep-based)
+        WL_C->>WL_C: sleep(500ms)
+        WL_C->>ARD_C: Toggle LED
+        ARD_C->>ARD_C: LED ON/OFF
+    end
+    
+    loop Every 500ms - Workload D (Timpani-based)
+        PODMAN->>WL_D: Activate (via Timpani)
+        WL_D->>ARD_D: Toggle LED
+        ARD_D->>ARD_D: LED ON/OFF
+    end
 ```
 
 After this action, both LED workloads start running on the guest node.
-
-### 2. Normal Workload Periodic Execution
-
-The normal workload controls Arduino C.
-
-```text
-Normal workload on guest NUC
-        |
-        | sleep 0.5s
-        v
-Send LED toggle signal
-        |
-        v
-Arduino C LED Strip toggles ON/OFF
-```
-
 This workload uses application-level sleep to generate a 0.5-second period. Under normal CPU conditions, the LED strip toggles at the intended interval. When CPU load increases, the sleep-based period can be disturbed.
-
-### 3. Timpani-scheduled Workload Execution
-
-The Timpani-scheduled workload controls Arduino D.
-
-```text
-Timpani scheduler
-        |
-        | activate every 0.5s
-        v
-Timpani-scheduled workload on guest NUC
-        |
-        v
-Send LED toggle signal
-        |
-        v
-Arduino D LED Strip toggles ON/OFF
-```
-
 This workload is activated by Timpani every 0.5 seconds. Even when CPU load increases, the workload is expected to preserve its configured activation period.
 
 ### 4. CPU Load Trigger
 
 The user presses the joystick button on Arduino A.
 
-```text
-Arduino A Joystick Button
-        |
-        v
-Kuksa Databroker
-        |
-        v
-CPU load controller on guest NUC
-        |
-        v
-Guest CPU load up/down
+```mermaid
+sequenceDiagram
+    participant USER as User
+    participant ARD_A as Arduino A<br/>Joystick
+    participant INPUT as Input Adapter<br/>NUC1
+    participant KUKSA as Kuksa<br/>Databroker
+    participant CPU_CTRL as CPU Load<br/>Controller
+    participant NUC2 as NUC 2<br/>OS
+    participant WL_C as Workload C<br/>(sleep-based)
+    participant WL_D as Workload D<br/>(Timpani-based)
+    participant ARD_C as Arduino C
+    participant ARD_D as Arduino D
+    
+    USER->>ARD_A: Press Joystick Button
+    ARD_A->>INPUT: Button = True
+    INPUT->>KUKSA: demo.joystick.button = true
+    KUKSA->>CPU_CTRL: Trigger CPU Load Toggle
+    CPU_CTRL->>NUC2: Generate CPU Load (+ 50%)
+    
+    Note over NUC2: High CPU Load Condition
+    
+    par Normal Workload (Affected by CPU load)
+       
+            Note over WL_C: Period Disturbance Risk
+            WL_C->>WL_C: sleep(500ms) + CPU contention
+            WL_C->>WL_C: Actual wake-up: 600ms or 700ms?
+            WL_C->>ARD_C: Toggle (delayed)
+            ARD_C->>ARD_C: LED ON/OFF (jittery)
+        
+    and Timpani Workload (Protected by scheduler)
+         
+            Note over WL_D: Period Maintained
+            NUC2->>WL_D: Activate at T=500ms (guaranteed)
+            NUC2->>WL_D: Activate at T=1000ms (guaranteed)
+            NUC2->>WL_D: Activate at T=1500ms (guaranteed)
+            WL_D->>ARD_D: Toggle (on schedule)
+            ARD_D->>ARD_D: LED ON/OFF (synchronized)
+        
+    end
+    
+    Note over ARD_C,ARD_D: Visual Difference Observed
+    Note over ARD_C: Arduino C: irregular toggling
+    Note over ARD_D: Arduino D: regular 0.5s toggling
 ```
 
 The CPU load controller changes the CPU load of the guest NUC. This creates the condition needed to compare normal scheduling behavior against Timpani-based scheduling behavior.
 
-### 5. Time Synchronization Between Workloads
-
-Although the two workloads use different scheduling mechanisms, the scenario is designed so that LED ON/OFF synchronization is preserved between Arduino C and Arduino D.
-
-```text
-Normal workload timing path       Timpani workload timing path
-        |                                  |
-        v                                  v
-Arduino C LED toggle      <sync>   Arduino D LED toggle
-```
-
-This demonstrates that the blueprint is not only comparing jitter under CPU load, but also showing a scenario-level time synchronization design between heterogeneous workload execution modes.
-
-### 6. Terminate Scenario Workloads
-
-The user turns Arduino B counterclockwise and presses the rotary button.
-
-```text
-Arduino B Rotary Input
-        |
-        v
-Master NUC
-        |
-        v
-Pullpiri scenario trigger
-        |
-        v
-Guest NUC
-        |
-        +--> Terminate normal scenario workload
-        |
-        +--> Terminate Timpani-scheduled scenario workload
-```
-
-Both scenario workloads are terminated on the guest node.
 
 ## Expected Demonstration Result
 
 The expected result of the demo is as follows:
+
+```mermaid
+graph TB
+    subgraph comparison["Behavior Comparison"]
+        direction TB
+        LOW["Low CPU Load"]
+        LOW_C["WL_C: ~500ms ✓"]
+        LOW_D["WL_D: 500ms ✓"]
+        LOW --> LOW_C --> LOW_D
+        
+        HIGH["High CPU Load"]
+        HIGH_C["WL_C: ~600-800ms ⚠️"]
+        HIGH_D["WL_D: 500ms ✓"]
+        HIGH --> HIGH_C --> HIGH_D
+    end
+```
 
 | Condition | Normal workload | Timpani-scheduled workload |
 |---|---|---|
