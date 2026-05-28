@@ -2,39 +2,39 @@
 
 This folder contains the NUC Master setup for the fail-operation demonstration.
 
-## 사전 준비
+## Prerequisites
 
 ### Required Docker Images
 
-다음 Docker 이미지들을 사전에 빌드해야 함:
+The following Docker images must be built beforehand:
 
-- `failop-serial-bridge:latest` - Arduino와 KUKSA/Pullpiri를 연결하는 브리지
-- `quay.io/eclipse-kuksa/kuksa-databroker:0.6.0` - KUKSA databroker (공식 이미지)
+- `failop-serial-bridge:latest` - Bridge connecting Arduino and KUKSA/Pullpiri
+- `quay.io/eclipse-kuksa/kuksa-databroker:0.6.0` - KUKSA databroker (official image)
 
-### Docker Image 빌드
+### Build Docker Images
 
 ```bash
-# Serial bridge 이미지 빌드
+# Build Serial bridge image
 cd /home/lge/work/sdv-blueprint/fail-operation/nuc_base/nuc_master
 docker compose build failop-serial-bridge
 ```
 
-**확인:**
+**Verify:**
 ```bash
 docker images | grep failop-serial-bridge
 # failop-serial-bridge   latest   ...
 ```
 
-KUKSA databroker는 docker-compose.yml에서 자동으로 pull됩니다.
+KUKSA databroker is automatically pulled from docker-compose.yml.
 
-## Arduino 설정
+## Arduino Setup
 
-[arduino](./arduino/README.md) 참조
+See [arduino](./arduino/README.md) for details
 
-**요약:**
-1. udev rules 설정으로 디바이스 경로 고정
-2. Arduino 펌웨어 컴파일 및 업로드
-3. 3개 보드: Joystick, LED, Gear
+**Summary:**
+1. Fix device path with udev rules configuration
+2. Compile and upload Arduino firmware
+3. 3 boards: Joystick, LED, Gear
 
 ## Hardware Setup
 
@@ -82,16 +82,16 @@ KUKSA databroker는 docker-compose.yml에서 자동으로 pull됩니다.
 - `pullpiri-yaml/yaml/container-launch.yaml` - Launch containers
 - `pullpiri-yaml/yaml/container-stop.yaml` - Stop containers
 
-## 실행
+## Running
 
-### 1. Docker Compose 시작
+### 1. Start Docker Compose
 
 ```bash
 cd /home/lge/work/sdv-blueprint/fail-operation/nuc_base/nuc_master
 docker compose up -d
 ```
 
-**확인:**
+**Verify:**
 ```bash
 docker compose ps
 # NAME                   IMAGE                                          STATUS
@@ -99,17 +99,17 @@ docker compose ps
 # failop-serial-bridge   failop-serial-bridge:latest                    Up
 ```
 
-### 2. 로그 확인
+### 2. Check Logs
 
 ```bash
-# 실시간 로그
+# Real-time logs
 docker logs -f failop-serial-bridge
 
-# 최근 로그
+# Recent logs
 docker logs --tail 50 failop-serial-bridge
 ```
 
-**정상 시작 로그:**
+**Expected startup logs:**
 ```
 ============================================================
 Fail-Operation Serial Bridge
@@ -125,13 +125,13 @@ Thread Architecture:
 [Main-LED] Monitor started: /dev/arduino_led
 ```
 
-### 3. 동작 테스트
+### 3. Test Operation
 
-**Joystick 테스트:**
-- 버튼 누름 → LED 초록색 + DataBroker 전송
-- 버튼 뗌 → LED 꺼짐 + DataBroker 전송
+**Joystick Test:**
+- Button press → LED green + DataBroker send
+- Button release → LED off + DataBroker send
 
-**예상 로그:**
+**Expected logs:**
 ```
 [Joystick] PRESSED → DataBroker + LED GREEN
 ✓ Sent to databroker: ButtonPressed=True
@@ -139,12 +139,12 @@ Thread Architecture:
 ✓ Sent to databroker: ButtonPressed=False
 ```
 
-**Gear (Rotary Encoder) 테스트:**
-- 첫 동작: 시계방향(CW) → LAUNCH YAML 전송, 보라색 LED
-- 다음: 반시계방향(CCW) → STOP YAML 전송, 초록색 LED
-- 잘못된 방향 → 무시, 빨간색 LED
+**Gear (Rotary Encoder) Test:**
+- First action: Clockwise (CW) → Send LAUNCH YAML, purple LED
+- Next: Counter-clockwise (CCW) → Send STOP YAML, green LED
+- Invalid direction → Ignore, red LED
 
-**예상 로그:**
+**Expected logs:**
 ```
 Gear signal: CW
 [Gear] State=0 + CW → LAUNCH (state becomes 1)
@@ -155,43 +155,43 @@ Gear signal: CCW
 [POST] http://192.168.0.3:47099/api/artifact yaml=container-stop.yaml status=200
 ```
 
-## 중지
+## Stop
 
 ```bash
 docker compose down
 ```
 
-## 문제 해결
+## Troubleshooting
 
-### Arduino가 인식되지 않을 때
+### Arduino not recognized
 
 ```bash
-# 디바이스 확인
+# Check devices
 ls -la /dev/arduino_*
 arduino-cli board list
 
-# udev rules 재적용
+# Reapply udev rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-### Docker 컨테이너가 Arduino에 접근 못할 때
+### Docker container cannot access Arduino
 
 ```bash
-# 컨테이너 내부에서 디바이스 확인
+# Check devices inside container
 docker exec failop-serial-bridge ls -la /dev/arduino_*
 
-# 권한 확인 (rw 필요)
+# Check permissions (rw required)
 ls -la /dev/arduino_*
 ```
 
-### Pullpiri 연결 실패
+### Pullpiri connection failure
 
 ```bash
-# Pullpiri 서버 확인
+# Check Pullpiri server
 curl -I http://192.168.0.3:47099/api/artifact
 
-# 네트워크 확인
+# Check network
 ping 192.168.0.3
 ```
 

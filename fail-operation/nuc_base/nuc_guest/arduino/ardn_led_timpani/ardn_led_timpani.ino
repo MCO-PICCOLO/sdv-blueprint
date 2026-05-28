@@ -11,7 +11,7 @@
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(N_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-const uint32_t RED = Adafruit_NeoPixel::Color(255, 0, 0);  // TIMPANI용은 빨간색
+const uint32_t RED = Adafruit_NeoPixel::Color(255, 0, 0);  // TIMPANI is red
 const uint32_t OFF = 0;
 
 bool ledOn = false;
@@ -37,7 +37,7 @@ void loop() {
     if (Serial.available() > 0) {
         char c = Serial.read();
         if (c == '1') {
-            ledOn = !ledOn;  // 토글
+            ledOn = !ledOn;  // Toggle
             showAll(ledOn ? RED : OFF);
         } else if (c == '0') {
             ledOn = false;

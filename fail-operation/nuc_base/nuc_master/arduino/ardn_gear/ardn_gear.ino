@@ -104,13 +104,13 @@ void loop() {
     int change = getEncoderTurn();
     
     if (change != 0) {
-        if (change > 0) {  // 시계방향 (CW)
+        if (change > 0) {  // Clockwise (CW)
             cwClicks++;
             if (cwClicks >= CLICK_THRESHOLD) {
                 Serial.println("CW");
                 cwClicks = 0;
             }
-        } else {  // change < 0, 반시계방향 (CCW)
+        } else {  // change < 0, Counter-Clockwise (CCW)
             ccwClicks++;
             if (ccwClicks >= CLICK_THRESHOLD) {
                 Serial.println("CCW");
