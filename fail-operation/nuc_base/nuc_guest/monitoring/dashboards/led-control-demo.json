@@ -148,6 +148,7 @@
           },
           "editorMode": "code",
           "expr": "led_delay_ms{container=\"timpani\"}",
+          "interval": "1s",
           "legendFormat": "TIMPANI (Real-time)",
           "range": true,
           "refId": "A"
@@ -159,6 +160,7 @@
           },
           "editorMode": "code",
           "expr": "led_delay_ms{container=\"normal\"}",
+          "interval": "1s",
           "legendFormat": "Normal (Standard)",
           "range": true,
           "refId": "B"
@@ -318,6 +320,7 @@
           },
           "editorMode": "code",
           "expr": "led_interval_ms{container=\"timpani\"}",
+          "interval": "1s",
           "legendFormat": "TIMPANI Interval",
           "range": true,
           "refId": "A"
@@ -329,6 +332,7 @@
           },
           "editorMode": "code",
           "expr": "led_interval_ms{container=\"normal\"}",
+          "interval": "1s",
           "legendFormat": "Normal Interval",
           "range": true,
           "refId": "B"
@@ -410,6 +414,7 @@
           },
           "editorMode": "code",
           "expr": "led_delay_ms{container=\"timpani\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -480,6 +485,7 @@
           },
           "editorMode": "code",
           "expr": "led_delay_ms{container=\"normal\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -542,6 +548,7 @@
           },
           "editorMode": "code",
           "expr": "led_signal_count{container=\"timpani\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -604,6 +611,7 @@
           },
           "editorMode": "code",
           "expr": "led_signal_count{container=\"normal\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -686,6 +694,7 @@
           },
           "editorMode": "code",
           "expr": "led_state{container=\"timpani\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -768,6 +777,7 @@
           },
           "editorMode": "code",
           "expr": "led_state{container=\"normal\"}",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -838,6 +848,7 @@
           },
           "editorMode": "code",
           "expr": "avg_over_time(led_delay_ms{container=\"timpani\"}[1m])",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -908,6 +919,7 @@
           },
           "editorMode": "code",
           "expr": "avg_over_time(led_delay_ms{container=\"normal\"}[1m])",
+          "interval": "1s",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
