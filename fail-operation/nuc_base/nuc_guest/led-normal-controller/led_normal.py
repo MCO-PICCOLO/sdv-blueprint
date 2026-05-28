@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-LED Normal Controller - Interval 기반 LED 제어
+LED Normal Controller - Interval-based LED control
 
-아키텍처:
-- Main Thread: 상태 머신 관리, interval 계산, LED 토글
-- Worker Thread: CPU 부하 시뮬레이션 (busy_work)
-- Metrics Thread (daemon): Prometheus HTTP 서버 (:9102)
+Architecture:
+- Main Thread: State machine management, interval calculation, LED toggle
+- Worker Thread: CPU load simulation (busy_work)
+- Metrics Thread (daemon): Prometheus HTTP server (:9102)
 
-상태 머신:
-- NORMAL: delay < 500ms, 정상 토글
-- STRESS: delay >= 500ms, 느린 토글
-- RECOVERY: STRESS → NORMAL 전이 시 timpani와 동기화
+State Machine:
+- NORMAL: delay < 500ms, normal toggle
+- STRESS: delay >= 500ms, slow toggle
+- RECOVERY: Synchronize with timpani on STRESS → NORMAL transition
 """
 
 import os
@@ -27,7 +27,7 @@ except ImportError:
     print("pyserial not installed. Run: pip install pyserial")
     sys.exit(1)
 
-# 설정
+# Configuration
 SERIAL_PORT = "/dev/arduino_led_normal"
 BAUD_RATE = 115200
 INTERVAL = 0.5  # 500ms
@@ -36,7 +36,7 @@ SYNC_FILE = "/tmp/timpani_start"
 LED_STATE_FILE = "/tmp/timpani_led_state"
 DEFAULT_BUSY_ITERATIONS = 13_000_000
 
-# 전역 상태
+# Global state
 g_running = True
 g_metrics = {
     "delay_ms": 0.0,
@@ -47,7 +47,7 @@ g_metrics = {
 
 
 def get_env_int(name: str, default: int) -> int:
-    """환경 변수에서 정수 읽기"""
+    """Read integer from environment variable"""
     try:
         return int(os.environ.get(name, default))
     except ValueError:
@@ -55,7 +55,7 @@ def get_env_int(name: str, default: int) -> int:
 
 
 def read_timpani_state() -> bool | None:
-    """timpani LED 상태 파일 읽기 (동기화용)"""
+    """Read timpani LED state file (for synchronization)"""
     try:
         with open(LED_STATE_FILE, "r") as f:
             return f.read().strip() == "1"
@@ -64,7 +64,7 @@ def read_timpani_state() -> bool | None:
 
 
 class ComputationWorker:
-    """별도 스레드에서 CPU 부하 작업 수행"""
+    """Perform CPU load computation in separate thread"""
 
     def __init__(self):
         self._completed = threading.Event()
@@ -72,21 +72,21 @@ class ComputationWorker:
         self.computation_time = 0.0
 
     def start(self, iterations: int):
-        """연산 시작"""
+        """Start computation"""
         self._completed.clear()
         self._thread = threading.Thread(target=self._run, args=(iterations,), daemon=True)
         self._thread.start()
 
     def _run(self, iterations: int):
-        """busy_work 실행"""
+        """Execute busy_work"""
         start = time.perf_counter()
         total = sum(i * i for i in range(iterations))
-        _ = total  # 사용되지 않음 경고 방지
+        _ = total  # Prevent unused warning
         self.computation_time = time.perf_counter() - start
         self._completed.set()
 
     def wait(self, timeout: float = None) -> bool:
-        """완료 대기"""
+        """Wait for completion"""
         return self._completed.wait(timeout)
 
     @property
@@ -95,10 +95,10 @@ class ComputationWorker:
 
 
 class MetricsHandler(BaseHTTPRequestHandler):
-    """Prometheus 메트릭 HTTP 핸들러"""
+    """Prometheus metrics HTTP handler"""
 
     def log_message(self, *args):
-        pass  # 로그 비활성화
+        pass  # Disable logging
 
     def do_GET(self):
         body = (
@@ -123,7 +123,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
 
 def start_metrics_server():
-    """Prometheus 메트릭 서버 시작"""
+    """Start Prometheus metrics server"""
     try:
         server = HTTPServer(("0.0.0.0", METRICS_PORT), MetricsHandler)
         print(f"[Metrics] Server listening on port {METRICS_PORT}")
@@ -133,7 +133,7 @@ def start_metrics_server():
 
 
 def shutdown_handler(sig, frame):
-    """종료 시그널 핸들러"""
+    """Shutdown signal handler"""
     global g_running
     g_running = False
     print("\nShutdown signal received")
@@ -142,28 +142,28 @@ def shutdown_handler(sig, frame):
 def main():
     global g_running
 
-    # 환경 변수
+    # Environment variables
     cpu_affinity = get_env_int("CPU_AFFINITY", 12)
     busy_iterations = get_env_int("BUSY_ITERATIONS", DEFAULT_BUSY_ITERATIONS)
 
-    # CPU affinity 설정
+    # Set CPU affinity
     try:
         os.sched_setaffinity(0, {cpu_affinity})
         print(f"CPU affinity set to: {cpu_affinity}")
     except (OSError, AttributeError) as e:
         print(f"Warning: Could not set CPU affinity: {e}")
 
-    # 시그널 핸들러
+    # Signal handlers
     signal.signal(signal.SIGINT, shutdown_handler)
     signal.signal(signal.SIGTERM, shutdown_handler)
 
-    # 메트릭 서버 시작 (daemon)
+    # Start metrics server (daemon)
     threading.Thread(target=start_metrics_server, daemon=True).start()
 
     print("=== LED Normal Controller ===")
     print(f"Serial: {SERIAL_PORT}, Interval: {INTERVAL*1000:.0f}ms, Iterations: {busy_iterations}")
 
-    # 동기화 파일 대기
+    # Wait for sync file
     print(f"Waiting for sync file: {SYNC_FILE}")
     while g_running and not os.path.exists(SYNC_FILE):
         time.sleep(0.01)
@@ -173,7 +173,7 @@ def main():
 
     print("Sync file detected, starting...")
 
-    # Serial 연결
+    # Serial connection
     try:
         ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
         print(f"Serial connected: {SERIAL_PORT}")
@@ -181,13 +181,13 @@ def main():
         print(f"Warning: Serial unavailable ({e}), dry-run mode")
         ser = None
 
-    # 상태 초기화
+    # Initialize state
     state = "NORMAL"  # NORMAL, STRESS, RECOVERY
     led_state = False
     signal_count = 0
     worker = ComputationWorker()
 
-    # 첫 토글 (timpani와 동시 시작)
+    # First toggle (simultaneous start with timpani)
     signal_count += 1
     led_state = True
     if ser:
@@ -201,10 +201,10 @@ def main():
 
     # Main Loop
     while g_running:
-        # 1. 연산 시작
+        # 1. Start computation
         worker.start(busy_iterations)
 
-        # 2. 연산 완료 대기
+        # 2. Wait for computation completion
         while g_running and not worker.is_completed:
             time.sleep(0.001)
 
@@ -213,12 +213,12 @@ def main():
 
         computation_ms = worker.computation_time * 1000
 
-        # 3. 다음 interval 끝 시점 계산 (500ms 단위 정렬)
+        # 3. Calculate next interval end point (align to 500ms units)
         elapsed = time.perf_counter() - last_signal_time
         intervals_to_wait = math.ceil(elapsed / INTERVAL)
         next_interval_end = last_signal_time + (intervals_to_wait * INTERVAL)
 
-        # 4. interval 끝까지 대기
+        # 4. Wait until interval end
         sleep_time = next_interval_end - time.perf_counter()
         if sleep_time > 0:
             time.sleep(sleep_time)
@@ -226,53 +226,53 @@ def main():
         current_time = time.perf_counter()
         actual_interval_ms = (current_time - last_signal_time) * 1000
 
-        # 5. 상태 전이 및 LED 제어
+        # 5. State transition and LED control
         if state == "STRESS" and computation_ms < 500:
-            # RECOVERY: timpani와 동기화
+            # RECOVERY: Synchronize with timpani
             timpani_state = read_timpani_state()
             if timpani_state is not None:
-                led_state = timpani_state  # 동기화 (토글 아님)
+                led_state = timpani_state  # Sync (not toggle)
             else:
                 led_state = not led_state  # fallback
 
             state = "NORMAL"
             log_prefix = "SYNC "
         elif computation_ms >= 500:
-            # STRESS: 느린 토글
+            # STRESS: Slow toggle
             state = "STRESS"
             led_state = not led_state
             log_prefix = "STRESS "
         else:
-            # NORMAL: 정상 토글
+            # NORMAL: Normal toggle
             state = "NORMAL"
             led_state = not led_state
             log_prefix = ""
 
-        # 6. LED 전송
+        # 6. Send LED
         signal_count += 1
         if ser:
             ser.write(b"1" if led_state else b"0")
             ser.flush()
 
-        # 7. Delay 계산
+        # 7. Calculate delay
         if computation_ms < 500:
             delay_ms = max(0, actual_interval_ms - 500)
         else:
             delay_ms = computation_ms
 
-        # 8. 메트릭 업데이트
+        # 8. Update metrics
         g_metrics["delay_ms"] = delay_ms
         g_metrics["interval_ms"] = actual_interval_ms
         g_metrics["led_state"] = 1 if led_state else 0
         g_metrics["signal_count"] = signal_count
 
-        # 9. 로그
+        # 9. Log
         print(f"[Normal {signal_count}] {log_prefix}LED {'ON' if led_state else 'OFF'} "
               f"(interval: {actual_interval_ms:.1f}ms, delay: {delay_ms:.1f}ms)")
 
         last_signal_time = current_time
 
-    # 정리
+    # Cleanup
     if ser:
         ser.close()
     print("Shutdown complete")
