@@ -1,4 +1,4 @@
-# Fail Operation Demo - NUC Guest
+# Resource isolation Demo - NUC Guest
 
 This folder contains the NUC Guest setup for the fail-operation demonstration.
 
