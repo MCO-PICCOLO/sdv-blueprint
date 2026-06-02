@@ -1,4 +1,4 @@
-# Fail Operation Demo - Multi-Node NUC Setup
+# Resource isolation Demo - Multi-Node NUC Setup
 
 The following instructions are based on a CentOS Stream environment with x86_64 architecture.
 
