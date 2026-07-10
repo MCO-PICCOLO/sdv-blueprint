@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Master preflight: build images, compile/upload Arduino sketches
+# Run directly on the master node.
+# Env overrides: see ../config.env  (SKIP_ARDUINO=1, SKIP_IMAGE=1)
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../config.env
+source "${SCRIPT_DIR}/../config.env"
+# shellcheck source=../lib/utils.sh
+source "${SCRIPT_DIR}/../lib/utils.sh"
+
+main() {
+  require_cmd docker
+  require_cmd arduino-cli
+
+  info "=== Master preflight ==="
+  info "NUC_MASTER_DIR=$MASTER_NUC_MASTER_DIR"
+  [[ -d "$MASTER_NUC_MASTER_DIR" ]] || { err "missing dir: $MASTER_NUC_MASTER_DIR"; exit 1; }
+
+  if [[ "$SKIP_ARDUINO" != "1" ]]; then
+    ensure_arduino_lib "Adafruit NeoPixel"
+    if [[ -f "$MASTER_ARDUINO_DIR/99-arduino.rules" ]]; then
+      info "Apply udev rules for stable Arduino device names"
+      sudo cp "$MASTER_ARDUINO_DIR/99-arduino.rules" /etc/udev/rules.d/99-arduino.rules
+      sudo udevadm control --reload-rules
+      sudo udevadm trigger
+      sleep 1
+      ls -al /dev/arduino_* 2>/dev/null || warn "/dev/arduino_* not found yet"
+    else
+      warn "99-arduino.rules not found: $MASTER_ARDUINO_DIR/99-arduino.rules"
+    fi
+
+    info "Compile/upload Arduino sketches"
+    cd "$MASTER_ARDUINO_DIR"
+    bash ./compile.sh
+    bash ./install.sh
+  else
+    warn "Skip Arduino step (SKIP_ARDUINO=1)"
+  fi
+
+  if [[ "$SKIP_IMAGE" != "1" ]]; then
+    info "Build serial bridge image"
+    cd "$MASTER_SERIAL_DIR"
+    sudo docker build -t failop-serial-bridge:latest .
+
+    info "Pull databroker image"
+    sudo docker pull quay.io/eclipse-kuksa/kuksa-databroker:0.6.0
+  else
+    warn "Skip image step (SKIP_IMAGE=1)"
+  fi
+
+  info "=== Master preflight done ==="
+}
+
+main "$@"

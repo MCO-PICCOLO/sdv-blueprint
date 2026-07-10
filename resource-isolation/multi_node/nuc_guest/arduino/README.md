@@ -13,7 +13,7 @@ This demo demonstrates **TIMPANI-based real-time LED control** vs **normal inter
 ```bash
 cd arduino
 ./compile.sh    # Compile sketches
-./install.sh    # Upload to devices (check ACM paths first)
+./install.sh    # Upload to devices
 ```
 
 See [arduino/README.md](./arduino/) for detailed instructions.

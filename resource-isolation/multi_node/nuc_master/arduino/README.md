@@ -83,21 +83,26 @@ Global variables use 6740 bytes (20%) of dynamic memory, leaving 26028 bytes for
 
 ## Install
 
-Run `install.sh` to install. However, there are some precautions.
+Run `install.sh` to upload all sketches.
 
 ```bash
 ./install.sh
 ```
 
+`install.sh` uses `resolve_port()` and `readlink -f` to convert fixed symlinks (`/dev/arduino_*`) to the real `/dev/ttyACMx` paths automatically.
+
 **Internal operation:**
 ```bash
-arduino-cli upload -p /dev/ttyACM2 --fqbn arduino:renesas_uno:unor4wifi ardn_stick
-arduino-cli upload -p /dev/ttyACM1 --fqbn arduino:renesas_uno:unor4wifi ardn_led
-arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:renesas_uno:unor4wifi ardn_gear
+JOY_PORT="$(readlink -f /dev/arduino_joystick)"
+LED_PORT="$(readlink -f /dev/arduino_led)"
+GEAR_PORT="$(readlink -f /dev/arduino_gear)"
+
+arduino-cli upload -p "${JOY_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_stick
+arduino-cli upload -p "${LED_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_led
+arduino-cli upload -p "${GEAR_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_gear
 ```
 
-As shown in the script above, the installation requires the original path instead of `/dev/arduino_*`.
-Therefore, you must match the folder and device paths correctly using `ls -al /dev/arduino_*`.
+If a symlink is missing, the script exits with an error like `[ERROR] Missing device: /dev/arduino_*`.
 
 ## Arduino Program Description
 
@@ -135,11 +140,11 @@ To check the serial output of each Arduino directly:
 
 ```bash
 # Joystick monitoring
-arduino-cli monitor -p /dev/ttyACM2 -c baudrate=115200
+arduino-cli monitor -p "$(readlink -f /dev/arduino_joystick)" -c baudrate=115200
 
 # LED monitoring
-arduino-cli monitor -p /dev/ttyACM1 -c baudrate=115200
+arduino-cli monitor -p "$(readlink -f /dev/arduino_led)" -c baudrate=115200
 
 # Gear monitoring
-arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200
+arduino-cli monitor -p "$(readlink -f /dev/arduino_gear)" -c baudrate=115200
 ```
