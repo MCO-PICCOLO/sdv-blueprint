@@ -33,7 +33,7 @@ resolve_auth_mode() {
       USE_SSHPASS="1"
     else
       USE_SSHPASS="0"
-      warn "sshpass 미설치: SSH 키 인증 모드로 동작합니다."
+      warn "sshpass not installed: falling back to SSH key authentication mode."
     fi
   fi
   [[ "${USE_SSHPASS}" == "1" ]] && require_cmd sshpass
@@ -56,7 +56,7 @@ run_remote() {
     rc=$?
     set -e
     if [[ $rc -eq 255 && -n "$pass" ]] && command -v sshpass >/dev/null 2>&1; then
-      warn "키 인증 실패($user@$host:$port). 비밀번호 인증으로 재시도합니다."
+      warn "Key authentication failed ($user@$host:$port). Retrying with password authentication."
       timeout "${timeout_sec}s" \
         sshpass -p "$pass" ssh "${SSH_COMMON_OPTS[@]}" \
           -o NumberOfPasswordPrompts=1 -p "$port" "$user@$host" "$remote_cmd"

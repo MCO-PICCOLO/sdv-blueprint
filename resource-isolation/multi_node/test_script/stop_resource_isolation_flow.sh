@@ -31,9 +31,9 @@ main() {
   run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \
     "set -e; pkill -x timpani-o || true; pkill -x timpani-n || true"
 
-  info "Step 4) master: sudo make uninstall (pullpiri)"
+  info "Step 4) master: pullpiri runtime uninstall script"
   run_remote_sudo "$MASTER_HOST" "$MASTER_PORT" "$MASTER_USER" "$MASTER_PASS" "$MASTER_SUDO_PASS" \
-    "set -e; cd '$MASTER_PULLPIRI_DIR'; make uninstall"
+    "set -e; bash '$MASTER_TEST_SCRIPT_DIR/pullpiri/scripts/uninstall-pullpiri.sh' '$GUEST_HOST' '$GUEST_PORT' '$GUEST_USER' '$GUEST_PASS' '$GUEST_SUDO_PASS' '$GUEST_TEST_SCRIPT_DIR'"
 
   info "Step 5) guest: sudo podman rm -f --all"
   run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \

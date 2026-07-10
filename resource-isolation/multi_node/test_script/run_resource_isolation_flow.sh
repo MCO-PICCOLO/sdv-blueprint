@@ -18,9 +18,9 @@ main() {
   run_remote "$MASTER_HOST" "$MASTER_PORT" "$MASTER_USER" "$MASTER_PASS" \
     "set -e; cd '$MASTER_NUC_MASTER_DIR'; docker compose up -d"
 
-  info "Step 2) master: sudo make install (pullpiri)"
+  info "Step 2) master: pullpiri runtime install script"
   run_remote_sudo "$MASTER_HOST" "$MASTER_PORT" "$MASTER_USER" "$MASTER_PASS" "$MASTER_SUDO_PASS" \
-    "set -e; cd '$MASTER_PULLPIRI_DIR'; make install"
+    "set -e; bash '$MASTER_TEST_SCRIPT_DIR/pullpiri/scripts/install-pullpiri.sh' '' '$GUEST_HOST' '$GUEST_PORT' '$GUEST_USER' '$GUEST_PASS' '$GUEST_SUDO_PASS' '$GUEST_NODE_IP' '$GUEST_TEST_SCRIPT_DIR'"
 
   info "Step 3) guest: sudo systemctl restart nodeagent.service"
   run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \
@@ -35,8 +35,8 @@ main() {
     "set -e; cd '$MASTER_TIMPANI_O_DIR'; nohup ./timpani-o -c '$NODE_CONFIG_YAML' > timpani-o.log 2>&1 & echo timpani_o_started"
 
   echo
-  warn "Step 6) Arduino 조작 후 YAML 전송을 진행하세요."
-  warn "다음 로그를 최대 ${WAIT_LOG_TIMEOUT_SEC}s 동안 감시합니다:"
+  warn "Step 6) After operating the Arduino, proceed with the YAML transmission."
+  warn "Watching the following log for up to ${WAIT_LOG_TIMEOUT_SEC}s:"
   echo "       $DATABROKER_LOG_PATTERN"
   echo "       (regex fallback: $DATABROKER_LOG_REGEX)"
 
@@ -66,24 +66,19 @@ main() {
   set -e
 
   if [[ $step6_rc -ne 0 ]]; then
-    warn "Step 6 로그 감시에 실패/타임아웃(코드: $step6_rc)."
-    read -r -p "Step 7을 계속 진행할까요? [y/N] " ans
+    warn "Step 6 log watch failed/timed out (code: $step6_rc)."
+    read -r -p "Continue with Step 7? [y/N] " ans
     if [[ ! "$ans" =~ ^[Yy]$ ]]; then
-      err "사용자 중단."
+      err "Aborted by user."
       exit 1
     fi
   fi
 
   info "Step 7) guest: run timpani-n"
-  if [[ "$STEP7_FOREGROUND" == "1" ]]; then
-    run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \
-      "set -e; cd '$GUEST_TIMPANI_N_DIR'; ./timpani-n -n guest -s -l 4 -P 80 192.168.0.3"
-  else
-    run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \
-      "set -e; cd '$GUEST_TIMPANI_N_DIR'; nohup ./timpani-n -n guest -s -l 4 -P 80 192.168.0.3 > '$GUEST_TIMPANI_N_LOG' 2>&1 & echo timpani_n_started"
-    info "Step 7) timpani-n runs in background on guest."
-    info "Step 7) log file: $GUEST_TIMPANI_N_DIR/$GUEST_TIMPANI_N_LOG"
-  fi
+  run_remote_sudo "$GUEST_HOST" "$GUEST_PORT" "$GUEST_USER" "$GUEST_PASS" "$GUEST_SUDO_PASS" \
+    "set -e; cd '$GUEST_TIMPANI_N_DIR'; nohup ./timpani-n -n guest -s -l 4 -P 80 192.168.0.3 > '$GUEST_TIMPANI_N_LOG' 2>&1 & echo timpani_n_started"
+  info "Step 7) timpani-n runs in background on guest."
+  info "Step 7) log file: $GUEST_TIMPANI_N_DIR/$GUEST_TIMPANI_N_LOG"
 
   info "Done."
 }
