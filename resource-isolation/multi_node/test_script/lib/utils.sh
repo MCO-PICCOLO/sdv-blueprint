@@ -76,6 +76,14 @@ run_remote_sudo() {
   run_remote "$host" "$port" "$user" "$pass" "$wrapped"
 }
 
+# ── Per-node convenience wrappers ─────────────────────────────
+# Use the node credentials from config.env and prepend `set -e` to every
+# remote command, so callers only pass the command itself.
+on_master()      { run_remote      "$MASTER_HOST" "$MASTER_PORT" "$MASTER_USER" "$MASTER_PASS"                    "set -e; $1"; }
+on_master_sudo() { run_remote_sudo "$MASTER_HOST" "$MASTER_PORT" "$MASTER_USER" "$MASTER_PASS" "$MASTER_SUDO_PASS" "set -e; $1"; }
+on_guest()       { run_remote      "$GUEST_HOST"  "$GUEST_PORT"  "$GUEST_USER"  "$GUEST_PASS"                     "set -e; $1"; }
+on_guest_sudo()  { run_remote_sudo "$GUEST_HOST"  "$GUEST_PORT"  "$GUEST_USER"  "$GUEST_PASS"  "$GUEST_SUDO_PASS"  "set -e; $1"; }
+
 # ── Arduino library check/install ────────────────────────────
 ensure_arduino_lib() {
   local lib="${1:-Adafruit NeoPixel}"

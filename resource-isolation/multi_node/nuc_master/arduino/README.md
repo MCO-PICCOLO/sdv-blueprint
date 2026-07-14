@@ -1,4 +1,4 @@
-# Fail Operation Demo with Arduino
+# Resource Isolation Demo with Arduino
 
 Run on NUC (Master) using CentOS Stream with x86_64 architecture
 
@@ -27,7 +27,7 @@ Here, `2341` is Arduino's vendor code, and each device's serial can be verified 
 udevadm info -a -n /dev/ttyACM0 | grep '{serial}' -m 1
 ```
 
-`ttyACM0` increments each time an Arduino device is connected. You can see which path it connected to using the `arduino-cli board list` command.
+Because the symlinks are bound to each board's **serial number** (not the `/dev/ttyACMx` number), the actual `ttyACMx` assignment can differ every time a device is connected. This does not matter: `install.sh` resolves the fixed `/dev/arduino_*` symlinks with `readlink -f`, so firmware is always uploaded to the correct board regardless of connection order. Use `arduino-cli board list` if you want to inspect the current mapping.
 
 Finally, run the following command to verify it was created correctly
 
@@ -38,7 +38,7 @@ sudo udevadm trigger
 ls -al /dev/arduino_*
 ```
 
-**Expected result:**
+**Expected result** (the `ttyACMx` numbers may vary; only the `arduino_*` symlinks matter):
 ```
 lrwxrwxrwx. 1 root root 7 May 26 04:44 /dev/arduino_gear -> ttyACM0
 lrwxrwxrwx. 1 root root 7 May 26 04:44 /dev/arduino_joystick -> ttyACM2
@@ -67,13 +67,6 @@ Run `compile.sh` to compile. The `.ino` filename must match the folder name for 
 ./compile.sh
 ```
 
-**Internal operation:**
-```bash
-arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_stick
-arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_led
-arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi ardn_gear
-```
-
 If compilation completes successfully, you should see the following logs.
 
 ```
@@ -91,17 +84,6 @@ Run `install.sh` to upload all sketches.
 
 `install.sh` uses `resolve_port()` and `readlink -f` to convert fixed symlinks (`/dev/arduino_*`) to the real `/dev/ttyACMx` paths automatically.
 
-**Internal operation:**
-```bash
-JOY_PORT="$(readlink -f /dev/arduino_joystick)"
-LED_PORT="$(readlink -f /dev/arduino_led)"
-GEAR_PORT="$(readlink -f /dev/arduino_gear)"
-
-arduino-cli upload -p "${JOY_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_stick
-arduino-cli upload -p "${LED_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_led
-arduino-cli upload -p "${GEAR_PORT}" --fqbn arduino:renesas_uno:unor4wifi ardn_gear
-```
-
 If a symlink is missing, the script exits with an error like `[ERROR] Missing device: /dev/arduino_*`.
 
 ## Arduino Program Description
@@ -110,7 +92,7 @@ If a symlink is missing, the script exits with an error like `[ERROR] Missing de
 - **Pin configuration**: Pin 8 (Joystick SW)
 - **Function**: Detects button press/release
 - **Output**: Sends "1" (press) or "0" (release) via serial
-- **Usage**: Received by bridge.py to send DataBroker + LED control
+- **Usage**: Received by `serial-bridge/serial/bridge.py` to send DataBroker + LED control
 
 ### ardn_led (LED Controller)
 - **Pin configuration**: Pin 6 (NeoPixel data)
@@ -128,7 +110,7 @@ If a symlink is missing, the script exits with an error like `[ERROR] Missing de
 - **Function**: 
   - Detects rotation direction (CW/CCW)
   - Sends "CW" or "CCW" via serial
-  - Receives color commands from bridge.py (PURPLE/GREEN/RED)
+  - Receives color commands from `serial-bridge/serial/bridge.py` (PURPLE/GREEN/RED)
 - **State Machine**: 
   - Initial state=0: Only CW allowed → LAUNCH
   - state=1: Only CCW allowed → STOP

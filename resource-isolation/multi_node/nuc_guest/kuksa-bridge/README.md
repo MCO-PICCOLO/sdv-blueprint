@@ -1,11 +1,11 @@
-# KUKSA Bridge - Fail Operation Guest
+# KUKSA Bridge - Resource Isolation Guest
 
 KUKSA databroker subscriber running on NUC Guest.
 Receives button events and triggers CPU workload via shell scripts.
 
 ## Overview
 
-This bridge subscribes to `Vehicle.Cabin.FailOperation.ButtonPressed` signal from KUKSA databroker.
+This bridge subscribes to `Vehicle.Cabin.ResourceIsolation.ButtonPressed` signal from KUKSA databroker.
 When a button press is detected, it toggles the `stress-ng` workload to simulate CPU load.
 
 ```
@@ -36,38 +36,38 @@ TRIGGER_OFF_SCRIPT=/app/script/trigger-off.sh
 ## Build
 
 ```bash
-cd /home/lge/Desktop/new/sdv-blueprint/fail-operation/nuc_base/nuc_guest/kuksa-bridge
-sudo podman build -t localhost/failop-kuksa-bridge-guest:latest .
+cd /home/lge/Desktop/new/sdv-blueprint/resource-isolation/nuc_base/nuc_guest/kuksa-bridge
+sudo podman build -t localhost/resiso-kuksa-bridge-guest:latest .
 ```
 
 ## Run
 
 ```bash
 sudo podman run --rm -d \
-  --name failop-kuksa-bridge-guest \
+  --name resiso-kuksa-bridge-guest \
   --network host \
   --privileged \
-  -v /home/lge/Desktop/new/sdv-blueprint/fail-operation/nuc_base/nuc_guest/kuksa-bridge/.env:/app/.env:ro \
-  -v /home/lge/Desktop/new/sdv-blueprint/fail-operation/nuc_base/nuc_guest/script:/app/script:ro \
+  -v /home/lge/Desktop/new/sdv-blueprint/resource-isolation/nuc_base/nuc_guest/kuksa-bridge/.env:/app/.env:ro \
+  -v /home/lge/Desktop/new/sdv-blueprint/resource-isolation/nuc_base/nuc_guest/script:/app/script:ro \
   -e PYTHONUNBUFFERED=1 \
-  localhost/failop-kuksa-bridge-guest:latest
+  localhost/resiso-kuksa-bridge-guest:latest
 ```
 
 ## Logs
 
 ```bash
 # Real-time log monitoring
-sudo podman logs failop-kuksa-bridge-guest -f
+sudo podman logs resiso-kuksa-bridge-guest -f
 
 # Recent logs
-sudo podman logs failop-kuksa-bridge-guest --tail=20
+sudo podman logs resiso-kuksa-bridge-guest --tail=20
 ```
 
 ## Behavior
 
 1. **KUKSA Databroker Connection**
-   - Port: `55556` (fail-operation databroker)
-   - Signal: `Vehicle.Cabin.FailOperation.ButtonPressed`
+   - Port: `55556` (resource-isolation databroker)
+   - Signal: `Vehicle.Cabin.ResourceIsolation.ButtonPressed`
 
 2. **Button Event Handling**
    - Button PRESSED (toggle ON) → Execute `trigger-on.sh`

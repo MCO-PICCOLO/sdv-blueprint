@@ -1,6 +1,6 @@
 # Resource isolation Demo - NUC Guest
 
-This folder contains the NUC Guest setup for the fail-operation demonstration.
+This folder contains the NUC Guest setup for the resource-isolation demonstration.
 
 ## Purpose
 
@@ -13,7 +13,7 @@ The Guest node:
 
 ### KUKSA Bridge
 
-- `kuksa-bridge/bridge.py` - Subscribes to `Vehicle.Cabin.FailOperation.ButtonPressed`
+- `kuksa-bridge/bridge.py` - Subscribes to `Vehicle.Cabin.ResourceIsolation.ButtonPressed`
 - When button is pressed, runs a shell script to start or stop the stress-ng process
 
 ## Container Execution

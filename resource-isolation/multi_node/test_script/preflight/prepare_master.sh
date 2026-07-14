@@ -33,9 +33,9 @@ main() {
   bash ./compile.sh
   bash ./install.sh
 
-  info "Build serial bridge image"
-  cd "$MASTER_SERIAL_DIR"
-  sudo docker build -t failop-serial-bridge:latest .
+  info "Build serial bridge image (docker compose)"
+  cd "$MASTER_SERIAL_BRIDGE_DIR"
+  sudo docker compose build
 
   info "Pull databroker image"
   sudo docker pull quay.io/eclipse-kuksa/kuksa-databroker:0.6.0

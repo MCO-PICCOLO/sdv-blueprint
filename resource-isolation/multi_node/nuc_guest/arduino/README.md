@@ -1,4 +1,4 @@
-# Fail Operation Demo - NUC Guest
+# Resource Isolation Demo - NUC Guest
 
 The following instructions are based on a CentOS Stream environment with x86_64 architecture.
 
@@ -31,7 +31,7 @@ sudo podman build -t localhost/led-normal-controller:latest .
 
 # KUKSA Bridge
 cd ../kuksa-bridge
-sudo podman build -t localhost/failop-kuksa-bridge-guest:latest .
+sudo podman build -t localhost/resiso-kuksa-bridge-guest:latest .
 ```
 
 ### 3. Start Monitoring

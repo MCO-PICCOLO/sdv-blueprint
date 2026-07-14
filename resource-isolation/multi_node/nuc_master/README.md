@@ -1,6 +1,6 @@
 # Resource isolation Demo - NUC Master
 
-This folder contains the NUC Master setup for the fail-operation demonstration.
+This folder contains the NUC Master setup for the resource-isolation demonstration.
 
 ## Prerequisites
 
@@ -8,21 +8,21 @@ This folder contains the NUC Master setup for the fail-operation demonstration.
 
 The following Docker images must be built beforehand:
 
-- `failop-serial-bridge:latest` - Bridge connecting Arduino and KUKSA/Pullpiri
+- `serial-bridge:latest` - Bridge connecting Arduino and KUKSA/Pullpiri
 - `quay.io/eclipse-kuksa/kuksa-databroker:0.6.0` - KUKSA databroker (official image)
 
 ### Build Docker Images
 
 ```bash
 # Build Serial bridge image
-cd /home/lge/work/sdv-blueprint/fail-operation/nuc_base/nuc_master
-docker compose build failop-serial-bridge
+cd nuc_master/serial-bridge
+docker compose build
 ```
 
 **Verify:**
 ```bash
-docker images | grep failop-serial-bridge
-# failop-serial-bridge   latest   ...
+docker images | grep serial-bridge
+# serial-bridge   latest   ...
 ```
 
 KUKSA databroker is automatically pulled from docker-compose.yml.
@@ -72,22 +72,46 @@ See [arduino](./arduino/README.md) for details
 
 ### Python Bridge
 
-- `serial/bridge.py` - Main bridge connecting Arduino ↔ KUKSA ↔ Pullpiri
+- `serial-bridge/serial/bridge.py` - Main bridge connecting Arduino ↔ KUKSA ↔ Pullpiri
   - Main Thread: Joystick → DataBroker + LED Control
   - Thread-DB: DataBroker worker (queue consumer)
   - Thread-Gear: Gear → YAML artifacts (CW/CCW)
 
 ### Pullpiri YAML
 
-- `pullpiri-yaml/yaml/container-launch.yaml` - Launch containers
-- `pullpiri-yaml/yaml/container-stop.yaml` - Stop containers
+YAML artifacts for Pullpiri container orchestration on the Guest node. These files
+define container deployment specifications sent to Pullpiri via HTTP API when the
+rotary encoder is rotated on the Master node. They are mounted into the
+`resiso-serial-bridge` container (`./pullpiri-yaml:/yaml`) and posted by
+`bridge.py`.
+
+| File | Trigger | Action |
+|------|---------|--------|
+| `serial-bridge/pullpiri-yaml/container-launch.yaml` | Rotary CW | Launch LED controller containers |
+| `serial-bridge/pullpiri-yaml/container-stop.yaml` | Rotary CCW | Stop LED controller containers |
+
+**Schedule configuration (in `container-launch.yaml`):**
+
+```yaml
+spec:
+  - name: led_timpani
+    priority: 50
+    policy: FIFO
+    cpu_affinity: 4096      # CPU core 12 (0x1000)
+    period: 500000          # 500ms in microseconds
+    release_time: 0
+    runtime: 10000          # 10ms
+    deadline: 500000        # 500ms
+    node_id: guest
+    max_dmiss: 3            # Max deadline misses before alert
+```
 
 ## Running
 
 ### 1. Start Docker Compose
 
 ```bash
-cd /sdv-blueprint/fail-operation/nuc_base/nuc_master
+cd nuc_master/serial-bridge
 docker compose up -d
 ```
 
@@ -95,8 +119,8 @@ docker compose up -d
 ```bash
 docker compose ps
 # NAME                   IMAGE                                          STATUS
-# failop-databroker      quay.io/eclipse-kuksa/kuksa-databroker:0.6.0   Up
-# failop-serial-bridge   failop-serial-bridge:latest                    Up
+# resiso-databroker      quay.io/eclipse-kuksa/kuksa-databroker:0.6.0   Up
+# resiso-serial-bridge   serial-bridge:latest                           Up
 ```
 
 ### 2. Stop

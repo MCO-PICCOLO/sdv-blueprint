@@ -1,126 +1,95 @@
-# Resource isolation Demo - Multi-Node NUC Setup
+# Resource Isolation Demo
 
-The following instructions are based on a CentOS Stream environment with x86_64 architecture.
+A demo that shows the timing-accuracy difference between a **TIMPANI-scheduled
+workload** and a **normal periodic (sleep) workload** under CPU load, using
+physical LEDs.
 
-## Overview
+- **Normal workload**: keeps a 500ms period with `sleep(0.5s)` -> the period
+  drifts once CPU load rises
+- **TIMPANI workload**: activated on a 500ms period by the TIMPANI scheduler ->
+  keeps an accurate period regardless of load
 
-This demo demonstrates **TIMPANI real-time signal-based LED control** vs **normal interval-based LED control** across a multi-node NUC setup. Under CPU load, the TIMPANI-controlled LED maintains precise 500ms intervals while the normal LED experiences delays.
+> See [Introduction.md](./Introduction.md) for background and design intent.
 
-## Hardware Setup
-
-### Master Node (NUC #1)
-
-| Device | Function | Serial Port |
-|--------|----------|-------------|
-| Arduino Joystick | Button input → KUKSA → CPU load control | `/dev/arduino_joystick` |
-| Arduino Rotary | CW/CCW → Launch/Terminate containers | `/dev/arduino_gear` |
-| Arduino LED | Status indicator (GREEN/RED/PURPLE) | `/dev/arduino_led` |
-
-### Guest Node (NUC #2)
-
-| Device | Function | Serial Port |
-|--------|----------|-------------|
-| Arduino LED (TIMPANI) | Controlled by TIMPANI signal (500ms) | `/dev/arduino_led_timpani` |
-| Arduino LED (Normal) | Controlled by sleep interval (500ms) | `/dev/arduino_led_normal` |
-
-## Data Flow
-
-### 1. Container Lifecycle (Rotary Encoder)
+## How It Works
 
 ```
-Master: Rotary CW  →  serial-bridge  →  Pullpiri Master  →  Pullpiri Agent  →  Launch Containers
-                              │                                    │
-                              │                                    ├── led-timpani-controller
-                              │                                    ├── led-normal-controller
-                              │                                    └── kuksa-serial-bridge
-                              │
-Master: Rotary CCW →  serial-bridge  →  Pullpiri Master  →  Pullpiri Agent  →  Terminate Containers
+[Joystick button]  ->  serial-bridge  ->  KUKSA Databroker  ->  kuksa-bridge  ->  stress-ng ON/OFF (toggle CPU load)
+[Rotary turn]      ->  serial-bridge  ->  Pullpiri          ->  workload containers Launch / Terminate
+[TIMPANI signal]   ->  led-timpani-controller  ->  LED (accurate 500ms)
+[Normal sleep]     ->  led-normal-controller   ->  LED (delayed under load)
 ```
 
-### 2. CPU Load Control (Joystick Button)
+There is a single key signal: `Vehicle.Cabin.ResourceIsolation.ButtonPressed`
+(written by serial-bridge, read by kuksa-bridge).
+
+## Layout
+
+Two deployment modes are provided.
+
+| Mode | Description | Location |
+|------|-------------|----------|
+| **single_node** | Everything runs on one PC (no SSH) | [single_node/](./single_node) |
+| **multi_node** | Split across master / guest nodes | [multi_node/](./multi_node) |
+
+Each mode shares the same structure.
 
 ```
-Master: Joystick Press & Release →  serial-bridge  →  KUKSA Databroker  →  Guest kuksa-bridge  →  stress-ng START
-Master: Joystick Press & Release →  serial-bridge  →  KUKSA Databroker  →  Guest kuksa-bridge  →  stress-ng STOP
+<mode>/
+├── arduino/           # Arduino sketches (compile / install)
+├── serial-bridge/     # serial <-> KUKSA / Pullpiri bridge, VSS spec, workload YAML
+├── kuksa-bridge/      # subscribes to the button signal -> controls stress-ng
+├── led-*-controller/  # LED control containers (timpani / normal)
+├── monitoring/        # Prometheus + Grafana
+└── test_script/       # run automation scripts *
 ```
 
-### 3. LED Control (500ms interval)
+## Usage
 
-```
-┌─ TIMPANI Path ─────────────────────────────────────────────────────────────────┐
-│ Timpani-O (Master)  →  Timpani-N (Guest)  →  led-timpani-controller  →  LED ON/OFF │
-│                         (SIGRTMIN+2)          (precise timing)                    │
-└───────────────────────────────────────────────────────────────────────────────────┘
+Both start and stop go through `test_script`. Configuration is done by editing
+only the **USER SETTINGS** section at the top of `test_script/config.env`.
 
-┌─ Normal Path ──────────────────────────────────────────────────────────────────┐
-│ led-normal-controller  →  sleep(0.5)  →  LED ON/OFF                            │
-│ (affected by CPU load)                                                          │
-└───────────────────────────────────────────────────────────────────────────────────┘
-```
+### Single Node
 
-## Test Procedure
-
-### Prerequisites
-
-- Pullpiri Master running on Master node
-- Pullpiri Agent running on Guest node
-- All Arduino devices connected and configured
-
-### Step 1: Start Timpani-O (Master)
+Runs on one PC. See
+[single_node/test_script/README.md](./single_node/test_script/README.md) for details.
 
 ```bash
-# On Master node
-cd /TIMPANI/timpani-o/build
-./timpani-o -c /pullpiri/examples/resources/timpani/node_configurations.yaml
+cd single_node/test_script
+
+./preflight/prepare.sh              # 1) one-time: build images + upload Arduino
+./run_resource_isolation_flow.sh    # 2) start
+./stop_resource_isolation_flow.sh   # 3) stop
 ```
 
-> **Note**: Modify the configuration path according to your environment.
+### Multi Node
 
-### Step 2: Launch Containers (Rotary CW)
-
-Rotate the joystick **clockwise (CW)** to launch containers:
-- LED turns **PURPLE** to indicate LAUNCH command sent
-- Wait for containers to start on Guest
-
-**Expected log on Master:**
-```
-Gear signal: CW
-[Gear] State=0 + CW → LAUNCH (state becomes 1)
-[POST] http://192.168.0.3:47099/api/artifact yaml=container-launch.yaml status=200
-```
-
-### Step 3: Start Timpani-N (Guest)
+Run preflight on each node first, then run the flow from the master PC. See
+[multi_node/test_script/README.md](./multi_node/test_script/README.md) for details.
 
 ```bash
-# On Guest node
-cd /TIMPANI/timpani-n/build
-sudo ./timpani-n -n guest -s -l 4 -P 80 192.168.0.3
+# one-time on each node
+./preflight/prepare_master.sh       # on the master node
+./preflight/prepare_guest.sh        # on the guest node
+
+# on the MASTER PC
+cd multi_node/test_script
+./run_resource_isolation_flow.sh    # start (orchestrates both nodes over SSH)
+./stop_resource_isolation_flow.sh   # stop
 ```
 
-> **Note**: Adjust parameters according to your environment.
-> - `-n guest`: Node name
-> - `-s`: Enable signal delivery
-> - `-l 4`: Log level
-> - `-P 80`: Priority
-> - `192.168.0.3`: Master IP address
+## Testing
 
-### Step 4: CPU Load Test (Joystick Button)
+After running `run_resource_isolation_flow.sh`:
 
-Press and release the joystick button to toggle CPU load:
+1. **Turn the rotary** -> workload containers are launched.
+   (once the flow detects the databroker log, it proceeds automatically)
+2. **Press the joystick button** -> toggles the CPU load (stress-ng).
+3. **Grafana dashboard** (`http://<node-ip>:3000`) -> compare the two LED periods.
+   - TIMPANI LED: stays ~500ms regardless of load
+   - Normal LED: period grows beyond 500ms under load
 
-| Action | Result |
-|--------|--------|
-| **Press & Release** | `stress-ng` starts → CPU load ON |
-| **Press & Release** | `stress-ng` stops → CPU load OFF |
+## Notes
 
-**Observe Grafana dashboard** at `http://<guest-ip>:3000`:
-- TIMPANI LED maintains ~500ms interval under load
-- Normal LED interval increases under load (>500ms)
-
-### Step 5: Check Logs
-
-```bash
-# On Guest node
-sudo podman logs -f led_normal_model_led_normal
-sudo podman logs -f led_timpani_model_led_timpani
-```
+- Detailed values such as paths and image versions can be overridden in the
+  **ADVANCED SETTINGS** section of `config.env`.

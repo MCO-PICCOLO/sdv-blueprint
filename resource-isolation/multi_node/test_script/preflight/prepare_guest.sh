@@ -32,7 +32,19 @@ main() {
   sudo podman build -t localhost/led-normal-controller:latest .
 
   cd "$GUEST_NUC_GUEST_DIR/kuksa-bridge"
-  sudo podman build -t localhost/failop-kuksa-bridge-guest:latest .
+  # The guest kuksa-bridge connects to the master's KUKSA databroker. Bake the
+  # master IP into the image via .env (no hardcoding). MASTER_NODE_IP is required
+  # (set it in config.env).
+  kb_env="$GUEST_NUC_GUEST_DIR/kuksa-bridge/.env"
+  master_ip="${MASTER_NODE_IP:-}"
+  [[ -n "$master_ip" ]] || { err "MASTER_NODE_IP is not set. Please set it in config.env."; exit 1; }
+  info "Set KUKSA_HOST=$master_ip in $kb_env"
+  if grep -q '^KUKSA_HOST=' "$kb_env"; then
+    sed -i "s/^KUKSA_HOST=.*/KUKSA_HOST=$master_ip/" "$kb_env"
+  else
+    printf 'KUKSA_HOST=%s\n' "$master_ip" >> "$kb_env"
+  fi
+  sudo podman build -t localhost/resiso-kuksa-bridge-guest:latest .
 
   info "Ensure stress-ng image"
   if ! sudo podman image exists localhost/stress-ng:latest; then
