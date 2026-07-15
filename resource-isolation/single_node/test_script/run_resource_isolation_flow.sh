@@ -30,8 +30,10 @@ main() {
   info "Step 4) start monitoring script (background)"
   ( cd "${MONITORING_DIR}" && nohup ./start.sh > monitoring_start.log 2>&1 & echo monitoring_started )
 
-  info "Step 5) start timpani-o (background)"
-  run_sudo bash -c "cd '${TIMPANI_O_DIR}'; nohup ./timpani-o -c '${NODE_CONFIG_YAML}' > '${TIMPANI_O_LOG}' 2>&1 & echo timpani_o_started"
+  info "Step 5) start timpani-o (container)"
+  # Load the timpani-o image and run it as a container (see install-timpani-o.sh).
+  run_sudo bash "${TEST_SCRIPT_DIR}/timpani/scripts/install-timpani-o.sh"
+  info "Step 5) timpani-o container started (logs: sudo podman logs -f timpani-o)"
 
   echo
   warn "Step 6) After operating the Arduino, proceed with the YAML transmission."
@@ -39,30 +41,17 @@ main() {
   echo "       (regex: ${DATABROKER_LOG_REGEX})"
 
   set +e
-  c="${DATABROKER_CONTAINER}"
-  if ! docker ps --format '{{.Names}}' | grep -Fx "${c}" >/dev/null 2>&1; then
-    c="$(docker ps --format '{{.Names}}' | grep -m1 -E 'resiso-serial-bridge|databroker|broker' || true)"
-  fi
-  step6_rc=124
-  if [[ -z "${c}" ]]; then
-    warn "data broker container not found"
-  else
-    info "watching container: ${c}"
-    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    end=$(( $(date +%s) + WAIT_LOG_TIMEOUT_SEC ))
-    while [[ $(date +%s) -lt ${end} ]]; do
-      if docker logs --since "${ts}" "${c}" 2>&1 | grep -m1 -E "${DATABROKER_LOG_REGEX}" >/dev/null; then
-        info "Step 6 pattern matched"
-        step6_rc=0
-        break
-      fi
-      sleep 2
-    done
-  fi
+  wait_for_container_log "${DATABROKER_CONTAINER}" "${DATABROKER_LOG_REGEX}" "${WAIT_LOG_TIMEOUT_SEC}"
+  step6_rc=$?
   set -e
 
+  case ${step6_rc} in
+    0) info "Step 6 pattern matched" ;;
+    1) warn "data broker container not found" ;;
+    *) warn "Step 6 log watch timed out (code: ${step6_rc})" ;;
+  esac
+
   if [[ ${step6_rc} -ne 0 ]]; then
-    warn "Step 6 log watch failed/timed out (code: ${step6_rc})."
     read -r -p "Continue with Step 7? [y/N] " ans
     if [[ ! "${ans}" =~ ^[Yy]$ ]]; then
       err "Aborted by user."
@@ -70,10 +59,10 @@ main() {
     fi
   fi
 
-  info "Step 7) run timpani-n (background)"
-  run_sudo bash -c "cd '${TIMPANI_N_DIR}'; nohup ./timpani-n -n '${NODE_NAME}' -s -l 4 -P 80 '${NODE_IP}' > '${TIMPANI_N_LOG}' 2>&1 & echo timpani_n_started"
-  info "Step 7) timpani-n runs in background."
-  info "Step 7) log file: ${TIMPANI_N_DIR}/${TIMPANI_N_LOG}"
+  info "Step 7) install & start timpani-n (systemd service)"
+  run_sudo env NODE_NAME="${NODE_NAME}" NODE_IP="${NODE_IP}" \
+    bash "${TEST_SCRIPT_DIR}/timpani/scripts/install-timpani-n.sh"
+  info "Step 7) timpani-n service started (logs: sudo journalctl -u timpani-n -f)"
 
   info "Done."
 }

@@ -13,7 +13,8 @@ test_script/
 ├── stop_resource_isolation_flow.sh   # stop
 ├── preflight/prepare.sh              # one-time: build images + upload Arduino
 ├── lib/utils.sh                      # shared functions
-└── pullpiri/                         # pullpiri install/uninstall scripts, node config
+├── pullpiri/                         # pullpiri install/uninstall scripts, node config
+└── timpani/                          # timpani-o/-n install/uninstall scripts, node config
 ```
 
 ## Prerequisites
@@ -41,8 +42,8 @@ Edit only the **USER SETTINGS** section at the top. Defaults cover the rest.
 | Script | Role |
 |--------|------|
 | `preflight/prepare.sh` | Apply udev rules, compile/upload Arduino, build container images (one-time) |
-| `run_resource_isolation_flow.sh` | Start serial-bridge -> install pullpiri -> restart nodeagent -> start monitoring/timpani-o -> wait for databroker log -> start timpani-n |
-| `stop_resource_isolation_flow.sh` | compose down, stop monitoring, kill timpani, uninstall pullpiri, clean up containers |
+| `run_resource_isolation_flow.sh` | Start serial-bridge -> install pullpiri -> restart nodeagent -> start monitoring -> run timpani-o container -> wait for databroker log -> install & start timpani-n package |
+| `stop_resource_isolation_flow.sh` | compose down, stop monitoring, remove timpani-o container, uninstall timpani-n package, uninstall pullpiri, clean up containers |
 
 ## Test Procedure
 
@@ -81,5 +82,11 @@ The script runs automatically and waits for Arduino input at **Step 6**.
 
 ## Notes
 
+- **timpani-o** runs as a Podman container (image downloaded on first run and
+  launched by `timpani/scripts/install-timpani-o.sh`; logs via
+  `sudo podman logs -f timpani-o`)
+- **timpani-n** is installed from a prebuilt native package (`.deb`/`.rpm`,
+  downloaded by `timpani/scripts/install-timpani-n.sh`) and runs as the
+  `timpani-n` systemd service (logs via `sudo journalctl -u timpani-n -f`)
 - Detailed values such as paths and image versions can be overridden in the **ADVANCED SETTINGS** section of config.env
 - Scripts work regardless of the current working directory (paths are resolved relative to their own location)

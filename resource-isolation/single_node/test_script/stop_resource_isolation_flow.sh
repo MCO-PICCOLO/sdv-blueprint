@@ -18,8 +18,9 @@ main() {
   info "Step 2) monitoring stop.sh"
   ( cd "${MONITORING_DIR}" && ./stop.sh )
 
-  info "Step 3) stop timpani-o, timpani-n processes"
-  run_sudo bash -c 'pkill -x timpani-o || true; pkill -x timpani-n || true'
+  info "Step 3) stop timpani-o container and uninstall timpani-n package"
+  run_sudo bash "${TEST_SCRIPT_DIR}/timpani/scripts/uninstall-timpani-o.sh"
+  run_sudo bash "${TEST_SCRIPT_DIR}/timpani/scripts/uninstall-timpani-n.sh"
 
   info "Step 4) pullpiri runtime uninstall"
   run_sudo bash "${TEST_SCRIPT_DIR}/pullpiri/scripts/uninstall-pullpiri.sh"

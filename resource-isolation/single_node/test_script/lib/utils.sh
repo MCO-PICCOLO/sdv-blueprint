@@ -47,3 +47,28 @@ ensure_arduino_lib() {
     arduino-cli lib install "$lib"
   fi
 }
+
+# ── Wait for a container log pattern ──────────────────────────
+# Watches a docker container's logs for a regex until it matches or times out.
+# Args: <container name> <log regex> <timeout sec>
+# Returns: 0 on match, 1 if no container found, 124 on timeout.
+wait_for_container_log() {
+  local name="$1" regex="$2" timeout="$3"
+  local c="${name}"
+  if ! docker ps --format '{{.Names}}' | grep -Fx "${c}" >/dev/null 2>&1; then
+    c="$(docker ps --format '{{.Names}}' | grep -m1 -E 'resiso-serial-bridge|databroker|broker' || true)"
+  fi
+  [[ -n "${c}" ]] || return 1
+
+  info "watching container: ${c}"
+  local ts end
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  end=$(( $(date +%s) + timeout ))
+  while [[ $(date +%s) -lt ${end} ]]; do
+    if docker logs --since "${ts}" "${c}" 2>&1 | grep -m1 -E "${regex}" >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 124
+}

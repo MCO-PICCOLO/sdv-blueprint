@@ -32,26 +32,17 @@ main() {
   info "Step 4) guest: start monitoring script (background)"
   on_guest "cd '$GUEST_MONITORING_DIR'; nohup ./start.sh > monitoring_start.log 2>&1 & echo monitoring_started"
 
-  info "Step 5) master: start timpani-o (background)"
-  on_master_sudo "cd '$MASTER_TIMPANI_O_DIR'; nohup ./timpani-o -c '$NODE_CONFIG_YAML' > timpani-o.log 2>&1 & echo timpani_o_started"
+  info "Step 5) master: start timpani-o (container)"
+  # Load the timpani-o image and run it as a container (see timpani/scripts/install-timpani-o.sh).
+  on_master_sudo "bash '$MASTER_TEST_SCRIPT_DIR/timpani/scripts/install-timpani-o.sh'"
+  info "Step 5) timpani-o container started on master (logs: sudo podman logs -f timpani-o)"
 
   echo
   warn "Step 6) After operating the Arduino, proceed with the YAML transmission."
   warn "Watching container '${DATABROKER_CONTAINER}' log on master for up to ${WAIT_LOG_TIMEOUT_SEC}s (regex: ${DATABROKER_LOG_REGEX})"
 
   set +e
-  on_master "\
-     c='$DATABROKER_CONTAINER'; \
-     docker ps --format '{{.Names}}' | grep -Fx \"\$c\" >/dev/null 2>&1 || \
-       c=\$(docker ps --format '{{.Names}}' | grep -m1 -E 'resiso-serial-bridge|databroker|broker' || true); \
-     [[ -n \"\$c\" ]] || { echo '[WARN] data broker container not found'; exit 124; }; \
-     echo \"[INFO] watching container: \$c\"; \
-     ts=\$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-     end=\$((\$(date +%s) + ${WAIT_LOG_TIMEOUT_SEC})); \
-     while [[ \$(date +%s) -lt \$end ]]; do \
-       docker logs --since \"\$ts\" \"\$c\" 2>&1 | grep -m1 -E \"$DATABROKER_LOG_REGEX\" >/dev/null && exit 0; \
-       sleep 2; \
-     done; exit 124"
+  wait_for_master_container_log
   step6_rc=$?
   set -e
 
@@ -61,9 +52,10 @@ main() {
     [[ "$ans" =~ ^[Yy]$ ]] || { err "Aborted by user."; exit 1; }
   fi
 
-  info "Step 7) guest: run timpani-n (background)"
-  on_guest_sudo "cd '$GUEST_TIMPANI_N_DIR'; nohup ./timpani-n -n guest -s -l 4 -P 80 $MASTER_NODE_IP > '$GUEST_TIMPANI_N_LOG' 2>&1 & echo timpani_n_started"
-  info "Step 7) log file: $GUEST_TIMPANI_N_DIR/$GUEST_TIMPANI_N_LOG"
+  info "Step 7) guest: install & start timpani-n (systemd service)"
+  # timpani-n runs on the guest and connects back to the master node IP.
+  on_guest_sudo "NODE_NAME=guest NODE_IP='$MASTER_NODE_IP' bash '$GUEST_TEST_SCRIPT_DIR/timpani/scripts/install-timpani-n.sh'"
+  info "Step 7) timpani-n service started on guest (logs: sudo journalctl -u timpani-n -f)"
 
   info "Done."
 }

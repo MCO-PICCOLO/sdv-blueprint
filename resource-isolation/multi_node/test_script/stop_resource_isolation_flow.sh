@@ -21,9 +21,9 @@ main() {
   info "Step 2) guest: monitoring stop.sh"
   on_guest "cd '$GUEST_MONITORING_DIR'; ./stop.sh"
 
-  info "Step 3) stop timpani processes (master: timpani-o, guest: timpani-n)"
-  on_master_sudo "pkill -x timpani-o || true"
-  on_guest_sudo  "pkill -x timpani-n || true"
+  info "Step 3) stop timpani (master: timpani-o container, guest: timpani-n package)"
+  on_master_sudo "bash '$MASTER_TEST_SCRIPT_DIR/timpani/scripts/uninstall-timpani-o.sh'"
+  on_guest_sudo  "bash '$GUEST_TEST_SCRIPT_DIR/timpani/scripts/uninstall-timpani-n.sh'"
 
   info "Step 4) master: pullpiri runtime uninstall script"
   on_master_sudo "bash '$MASTER_TEST_SCRIPT_DIR/pullpiri/scripts/uninstall-pullpiri.sh' '$GUEST_HOST' '$GUEST_PORT' '$GUEST_USER' '$GUEST_PASS' '$GUEST_SUDO_PASS' '$GUEST_TEST_SCRIPT_DIR'"

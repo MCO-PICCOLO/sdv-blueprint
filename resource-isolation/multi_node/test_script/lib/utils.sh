@@ -94,3 +94,34 @@ ensure_arduino_lib() {
     arduino-cli lib install "$lib"
   fi
 }
+
+# ── Wait for a container log pattern on the master node ───────
+# Watches DATABROKER_CONTAINER's logs on master for a regex until it matches or
+# times out. Uses config.env vars: DATABROKER_CONTAINER, DATABROKER_LOG_REGEX,
+# WAIT_LOG_TIMEOUT_SEC. Returns 0 on match, 124 on timeout / container not found.
+# The remote SSH command timeout is bumped past the watch window so the watch is
+# not killed early by REMOTE_CMD_TIMEOUT_SEC.
+wait_for_master_container_log() {
+  local remote_cmd
+  remote_cmd="$(cat <<REMOTE
+c='${DATABROKER_CONTAINER}'
+docker ps --format '{{.Names}}' | grep -Fx "\$c" >/dev/null 2>&1 || \
+  c=\$(docker ps --format '{{.Names}}' | grep -m1 -E 'resiso-serial-bridge|databroker|broker' || true)
+[[ -n "\$c" ]] || { echo '[WARN] data broker container not found'; exit 124; }
+echo "[INFO] watching container: \$c"
+ts=\$(date -u +%Y-%m-%dT%H:%M:%SZ)
+end=\$((\$(date +%s) + ${WAIT_LOG_TIMEOUT_SEC}))
+while [[ \$(date +%s) -lt \$end ]]; do
+  docker logs --since "\$ts" "\$c" 2>&1 | grep -m1 -E '${DATABROKER_LOG_REGEX}' >/dev/null && exit 0
+  sleep 2
+done
+exit 124
+REMOTE
+)"
+  # Give the SSH command enough time to cover the whole watch window.
+  local prev_timeout="${REMOTE_CMD_TIMEOUT_SEC:-180}" rc=0
+  REMOTE_CMD_TIMEOUT_SEC=$(( WAIT_LOG_TIMEOUT_SEC + 30 ))
+  on_master "${remote_cmd}" || rc=$?
+  REMOTE_CMD_TIMEOUT_SEC="${prev_timeout}"
+  return "${rc}"
+}

@@ -10,7 +10,7 @@ fi
 ROCKSDB_VERSION="v11.18.0"
 ROCKSDB_IMAGE="ghcr.io/mco-piccolo/pullpiri-rocksdb:${ROCKSDB_VERSION}"
 
-VERSION="latest"
+VERSION="v0.7.2-fix.01"
 CONTAINER_IMAGE="ghcr.io/eclipse-pullpiri/pullpiri:${VERSION}"
 
 echo "Running server with image: ${CONTAINER_IMAGE}"
