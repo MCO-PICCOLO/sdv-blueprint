@@ -1,23 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 # Single-node timpani-n runtime install.
-# Downloads the prebuilt timpani-n native package (.deb/.rpm) into DIST_DIR and
-# installs it. The package ships /usr/bin/timpani-n and a `timpani-n` systemd
-# service that reads its arguments from /etc/default/timpani-n (TIMPANI_N_ARGS).
-# This script writes those args (node name, node IP) and starts the service.
+# Installs the prebuilt timpani-n native package (.deb/.rpm) from ARTIFACTS_DIR.
+# The package ships /usr/bin/timpani-n and a `timpani-n` systemd service that
+# reads its arguments from /etc/default/timpani-n (TIMPANI_N_ARGS). This script
+# writes those args (node name, node IP) and starts the service.
 #
 # Required via environment:
 #   NODE_IP     host address timpani-n connects to (positional arg)
 # Overridable via environment:
 #   NODE_NAME          node id passed with -n (default: hostname)
 #   TIMPANI_N_ARGS     full arg string; overrides the composed default if set
-#   TIMPANI_N_VERSION  package version to download (default 2.0.0)
+#   TIMPANI_N_VERSION  package version to install (default 2.0.0)
+#   ARTIFACTS_DIR      dir holding the prebuilt packages
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 NODE_NAME="${NODE_NAME:-$(hostname)}"
 TIMPANI_N_VERSION="${TIMPANI_N_VERSION:-2.0.0}"
-PKG_BASE_URL="https://raw.githubusercontent.com/MCO-PICCOLO/TIMPANI/development_0.5/sdv_blueprint"
-# Directory the package is downloaded to / looked up in.
-DIST_DIR="${DIST_DIR:-/tmp}"
+# Local artifacts dir holding the prebuilt packages (resource-isolation/artifacts).
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-${SCRIPT_DIR}/../../../../artifacts}"
 
 log() { echo "[install-timpani-n] $*"; }
 die() { echo "[install-timpani-n] ERROR: $*" >&2; exit 1; }
@@ -39,55 +41,24 @@ OS=$(detect_os)
 log "Detected OS: ${OS}"
 
 # ---------------------------------------------------------------------------
-# download_package — fetch the prebuilt package into DIST_DIR (cached).
-# ---------------------------------------------------------------------------
-download_package() {
-    local file="$1"
-    local dest="${DIST_DIR}/${file}"
-    if [[ -f "${dest}" ]]; then
-        log "Using cached package at ${dest}"
-    else
-        log "Downloading ${file} from ${PKG_BASE_URL}/${file}..."
-        curl -fL -o "${dest}" "${PKG_BASE_URL}/${file}" \
-            || die "Failed to download ${PKG_BASE_URL}/${file}"
-    fi
-    echo "${dest}"
-}
-
-find_package() {
-    local pattern="$1"
-    local found
-    found=$(find "${DIST_DIR}" -maxdepth 1 -name "${pattern}" 2>/dev/null | sort -V | tail -n1)
-    if [[ -z "${found}" ]]; then
-        die "Package matching '${pattern}' not found in ${DIST_DIR}."
-    fi
-    echo "${found}"
-}
-
-# ---------------------------------------------------------------------------
-# timpani-n — download and install native package
+# install_timpani_n — install the native package from ARTIFACTS_DIR.
+# The package marks system dirs (/etc/default, /usr/lib/systemd*) as its own,
+# which conflicts with base packages; the --force-overwrite/--replacefiles
+# flags ignore those file/dir ownership conflicts.
 # ---------------------------------------------------------------------------
 install_timpani_n() {
     local pkg
     case "${OS}" in
         ubuntu|debian)
-            download_package "timpani-n-${TIMPANI_N_VERSION}-Linux.deb" >/dev/null
-            pkg=$(find_package "timpani-n*.deb")
+            pkg="${ARTIFACTS_DIR}/timpani-n-${TIMPANI_N_VERSION}-Linux.deb"
+            [[ -f "${pkg}" ]] || die "Package not found: ${pkg}"
             log "Installing ${pkg}..."
-            # The package marks system dirs (/etc/default, /usr/lib/systemd*) as
-            # its own, which can conflict with base packages. --force-overwrite
-            # ignores those file/dir ownership conflicts; then resolve any
-            # remaining dependencies.
             dpkg -i --force-overwrite "${pkg}" || apt-get install -f -y
             ;;
         centos|rhel|fedora)
-            download_package "timpani-n-${TIMPANI_N_VERSION}-Linux.rpm" >/dev/null
-            pkg=$(find_package "timpani-n*.rpm")
+            pkg="${ARTIFACTS_DIR}/timpani-n-${TIMPANI_N_VERSION}-Linux.rpm"
+            [[ -f "${pkg}" ]] || die "Package not found: ${pkg}"
             log "Installing ${pkg}..."
-            # The package marks system dirs (/etc/default, /usr/lib/systemd*) as
-            # its own, which conflicts with filesystem/systemd/plymouth under
-            # dnf. Install with rpm --replacefiles to ignore those dir/file
-            # ownership conflicts.
             rpm -Uvh --replacefiles --replacepkgs "${pkg}" \
                 || die "Failed to install ${pkg}"
             ;;

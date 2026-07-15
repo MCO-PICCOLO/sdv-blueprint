@@ -82,11 +82,13 @@ The script runs automatically and waits for Arduino input at **Step 6**.
 
 ## Notes
 
-- **timpani-o** runs as a Podman container (image downloaded on first run and
-  launched by `timpani/scripts/install-timpani-o.sh`; logs via
+- **timpani-o** runs as a Podman container (image pulled from
+  `ghcr.io/mco-piccolo/timpani-o:latest` and launched by
+  `timpani/scripts/install-timpani-o.sh`; logs via
   `sudo podman logs -f timpani-o`)
-- **timpani-n** is installed from a prebuilt native package (`.deb`/`.rpm`,
-  downloaded by `timpani/scripts/install-timpani-n.sh`) and runs as the
-  `timpani-n` systemd service (logs via `sudo journalctl -u timpani-n -f`)
+- **timpani-n** is installed from a prebuilt native package (`.deb`/`.rpm`) in
+  the [../../artifacts](../../artifacts) directory by
+  `timpani/scripts/install-timpani-n.sh` and runs as the `timpani-n` systemd
+  service (logs via `sudo journalctl -u timpani-n -f`)
 - Detailed values such as paths and image versions can be overridden in the **ADVANCED SETTINGS** section of config.env
 - Scripts work regardless of the current working directory (paths are resolved relative to their own location)
