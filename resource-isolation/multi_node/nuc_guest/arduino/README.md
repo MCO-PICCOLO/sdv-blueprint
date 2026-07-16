@@ -1,71 +1,70 @@
-# Resource Isolation Demo - NUC Guest
+# Guest Arduino — LED boards
 
-The following instructions are based on a CentOS Stream environment with x86_64 architecture.
+Arduino sketches and setup for the **guest-side LED boards** used in the
+resource-isolation demo. Two Arduino UNO R4 WiFi boards drive the two LEDs whose
+timing is compared: one controlled via TIMPANI signals, the other on a plain
+interval.
 
-## Overview
+> Instructions assume CentOS Stream / x86_64, with `arduino-cli` installed.
 
-This demo demonstrates **TIMPANI-based real-time LED control** vs **normal interval-based LED control** to visualize the difference in timing precision under CPU load.
+## Contents
 
-## Quick Start
-
-### 1. Setup Arduino Devices
-
-```bash
-cd arduino
-./compile.sh    # Compile sketches
-./install.sh    # Upload to devices
+```
+arduino/
+├── 99-arduino-led.rules   # udev rules: stable /dev symlinks per board
+├── compile.sh             # compile both sketches
+├── install.sh             # upload both sketches to their boards
+├── ardn_led_timpani/      # TIMPANI signal-based LED sketch
+└── ardn_led_normal/       # normal sleep-based LED sketch
 ```
 
-See [arduino/README.md](./arduino/) for detailed instructions.
+Board FQBN: `arduino:renesas_uno:unor4wifi`
 
-### 2. Build Docker Images
+## Boards & device symlinks
 
-```bash
-# LED TIMPANI Controller
-cd led-timpani-controller
-sudo podman build -t localhost/led-timpani-controller:latest .
+The udev rules map each board (by USB serial) to a stable symlink:
 
-# LED Normal Controller
-cd ../led-normal-controller
-sudo podman build -t localhost/led-normal-controller:latest .
+| Sketch | Symlink | Role |
+|--------|---------|------|
+| `ardn_led_timpani` | `/dev/arduino_led_timpani` | LED driven by TIMPANI signal-based control |
+| `ardn_led_normal`  | `/dev/arduino_led_normal`  | LED driven by normal sleep-based control |
 
-# KUKSA Bridge
-cd ../kuksa-bridge
-sudo podman build -t localhost/resiso-kuksa-bridge-guest:latest .
-```
+## Setup
 
-### 3. Start Monitoring
+### 1. Install udev rules (one-time)
 
 ```bash
-cd monitoring
-./start.sh
-# Access Grafana at http://localhost:3000 (admin/admin)
+sudo cp 99-arduino-led.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-### 4. Run LED Controllers
+Verify the symlinks appear after plugging in the boards:
 
-The LED controllers are launched by **TIMPANI-N** orchestration.
-See the orchestration YAML in the parent directory.
+```bash
+ls -l /dev/arduino_led_timpani /dev/arduino_led_normal
+```
 
-### 5. Trigger CPU Load
+> If the serials in `99-arduino-led.rules` don't match your boards, update the
+> `ATTRS{serial}` values (find them with `arduino-cli board list`).
 
-Button press on Master node triggers `stress-ng` via KUKSA bridge:
-- **Button ON**: Starts `stress-ng --cpu 0 --cpu-method all`
-- **Button OFF**: Kills all `stress-ng` processes
+### 2. Compile
 
-## Expected Results
+```bash
+./compile.sh
+```
 
-| Condition | TIMPANI Controller | Normal Controller |
-|-----------|-------------------|-------------------|
-| No Load | 500ms interval | 500ms interval |
-| CPU Load | **500ms interval** (precise) | **>500ms interval** (delayed) |
+### 3. Upload
 
-The Grafana dashboard visualizes this difference in real-time.
+```bash
+./install.sh
+```
 
-## Prerequisites
+`install.sh` resolves each symlink to its real port and uploads the matching
+sketch. Re-run after any sketch change.
 
-- **Arduino CLI**: For compiling and uploading sketches
-- **Podman**: For container management
-- **TIMPANI-N**: For real-time signal delivery
-- **KUKSA Databroker**: Running on port 55556
-- **stress-ng**: Installed on host or as container
+## Notes
+
+- These boards only drive the LEDs; the LED on/off timing is commanded by the
+  guest LED controllers (`../led-timpani-controller`, `../led-normal-controller`).
+- For the full multi-node demo procedure, see
+  [../../test_script/README.md](../../test_script/README.md).

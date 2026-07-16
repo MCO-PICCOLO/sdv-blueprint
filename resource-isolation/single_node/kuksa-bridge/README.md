@@ -1,11 +1,12 @@
 # KUKSA Bridge - Resource Isolation (Single Node)
 
-KUKSA databroker subscriber running on a single node.
-Receives button events and triggers CPU workload via shell scripts.
+KUKSA databroker client running on a single node.
+Polls a button signal from the local databroker and toggles a CPU workload
+(`stress-ng`) on the host via shell scripts.
 
 ## Overview
 
-This bridge subscribes to the `Vehicle.Cabin.ResourceIsolation.ButtonPressed` signal from the local KUKSA databroker.
+This bridge polls the `Vehicle.Cabin.ResourceIsolation.ButtonPressed` signal from the local KUKSA databroker.
 When a button press is detected, it toggles the `stress-ng` workload to simulate CPU load.
 
 ```
@@ -38,33 +39,30 @@ TRIGGER_ON_SCRIPT=/app/script/trigger-on.sh
 TRIGGER_OFF_SCRIPT=/app/script/trigger-off.sh
 ```
 
-## Build
+## Deployment
+
+In the single-node flow you do not run this container by hand:
+
+- The image `localhost/resiso-kuksa-bridge:latest` is built by
+  [../test_script/preflight/prepare.sh](../test_script/preflight/prepare.sh).
+- pullpiri launches/stops it via
+  [../serial-bridge/pullpiri-yaml/container-launch.yaml](../serial-bridge/pullpiri-yaml/container-launch.yaml) /
+  [container-stop.yaml](../serial-bridge/pullpiri-yaml/container-stop.yaml).
+
+### Build manually (optional)
 
 ```bash
 cd resource-isolation/single_node/kuksa-bridge
 sudo podman build -t localhost/resiso-kuksa-bridge:latest .
 ```
 
-## Run
+The Dockerfile COPYs `bridge.py`, `.env` and `script/` into the image, so no
+volume mounts are required to run it.
+
+### Logs
 
 ```bash
-sudo podman run --rm -d \
-  --name resiso-kuksa-bridge \
-  --network host \
-  --privileged \
-  -v "$PWD/.env:/app/.env:ro" \
-  -v "$PWD/script:/app/script:ro" \
-  -e PYTHONUNBUFFERED=1 \
-  localhost/resiso-kuksa-bridge:latest
-```
-
-## Logs
-
-```bash
-# Real-time log monitoring
-sudo podman logs resiso-kuksa-bridge -f
-
-# Recent logs
+sudo podman logs resiso-kuksa-bridge -f      # follow
 sudo podman logs resiso-kuksa-bridge --tail=20
 ```
 
@@ -72,16 +70,16 @@ sudo podman logs resiso-kuksa-bridge --tail=20
 
 1. **KUKSA Databroker Connection**
    - Host: `127.0.0.1` (local databroker)
-   - Port: `55556` (resource-isolation databroker)
-   - Signal: `Vehicle.Cabin.ResourceIsolation.ButtonPressed`
+   - Port: `55556` (resource-isolation databroker), gRPC
+   - Signal (polled): `Vehicle.Cabin.ResourceIsolation.ButtonPressed`
 
-2. **Button Event Handling**
-   - Button PRESSED (toggle ON) → Execute `trigger-on.sh`
-   - Button PRESSED (toggle OFF) → Execute `trigger-off.sh`
+2. **Button Event Handling** (toggle)
+   - Button press (toggle ON) → execute `trigger-on.sh`
+   - Next press (toggle OFF) → execute `trigger-off.sh`
 
 3. **Workload Control**
-   - ON: `stress-ng --cpu 0 --cpu-method all --timeout 0`
-   - OFF: `killall -9 stress-ng`
+   - ON: `setsid stress-ng --cpu 0 --cpu-method all --timeout 0` (runs on the host)
+   - OFF: terminates the stress-ng process group / all `stress-ng` processes
 
 ## Shell Scripts
 
@@ -96,8 +94,9 @@ sudo podman logs resiso-kuksa-bridge --tail=20
 
 ## Notes
 
-- The bridge runs in toggle mode: each button press alternates ON/OFF
-- `stress-ng` runs in the background, detached from the bridge process
-- `.env` changes take effect on the next button event (no restart needed)
-- Requires `--privileged` for process management on the host
+- The bridge runs in toggle mode: each button press alternates ON/OFF.
+- `stress-ng` runs on the host, detached from the bridge process (`setsid`).
+- `.env` values are baked in at build time; rebuild the image to change them.
+- For the full single-node demo procedure, see
+  [../test_script/README.md](../test_script/README.md).
 

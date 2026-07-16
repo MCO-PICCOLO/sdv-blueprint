@@ -5,9 +5,8 @@ Python serial bridge connecting Arduino devices to KUKSA Databroker and Pullpiri
 ## Overview
 
 This bridge reads input from Arduino devices and:
-1. Sends joystick button state to KUKSA Databroker
-2. Sends YAML artifacts to Pullpiri based on rotary encoder input
-3. Controls LED colors on Arduino devices
+1. Sends joystick button state to KUKSA Databroker and drives the LED Arduino (GREEN on press, OFF on release)
+2. Sends YAML artifacts to Pullpiri based on the gear (rotary encoder) button input
 
 ## Build
 
@@ -24,7 +23,7 @@ docker compose build
 |----------|---------|-------------|
 | `DATABROKER_IP` | `resiso-databroker` | KUKSA Databroker hostname/IP |
 | `DATABROKER_PORT` | `55555` | KUKSA Databroker port |
-| `MASTER_IP` | `host.docker.internal` | Pullpiri apiserver host (single node, reached via docker host gateway) |
+| `MASTER_IP` | `127.0.0.1` | Pullpiri apiserver host (single node; the compose file may override it) |
 
 ## Serial Ports
 
@@ -32,7 +31,7 @@ docker compose build
 |------|--------|-----------|
 | `/dev/arduino_joystick` | Joystick button | Input |
 | `/dev/arduino_led` | NeoPixel LED | Output |
-| `/dev/arduino_gear` | Rotary encoder + LED | Input/Output |
+| `/dev/arduino_gear` | Rotary encoder button | Input |
 
 ## Data Flow
 
@@ -45,20 +44,18 @@ docker compose build
 
 ### Rotary Encoder → Pullpiri
 
-State machine controls allowed directions:
+The gear Arduino sends a single digit over serial when its button is pressed at a
+rotation position. The `Thread-Gear` worker maps it to a workload YAML and posts
+it to Pullpiri. A repeated value for the current mode is ignored.
 
-| Current State | Input | Action | LED Color | Next State |
-|---------------|-------|--------|-----------|------------|
-| 0 (INIT) | CW | LAUNCH | PURPLE | 1 |
-| 0 (INIT) | CCW | Ignored | RED | 0 |
-| 1 (LAUNCHED) | CCW | STOP | GREEN | -1 |
-| 1 (LAUNCHED) | CW | Ignored | RED | 1 |
-| -1 (STOPPED) | CW | LAUNCH | PURPLE | 1 |
-| -1 (STOPPED) | CCW | Ignored | RED | -1 |
+| Gear input | Mode | Action | YAML sent |
+|------------|------|--------|-----------|
+| `1` | HIGH LOAD (Timpani) | Launch the LED workloads | `/yaml/container-launch.yaml` |
+| `0` | LOW LOAD (Normal) | Stop the LED workloads | `/yaml/container-stop.yaml` |
 
 ## YAML Artifacts
 
 Located in `/yaml/` directory (mounted volume):
-- `container-launch.yaml` - Sent on CW rotation (LAUNCH)
-- `container-stop.yaml` - Sent on CCW rotation (STOP)
+- `container-launch.yaml` - Sent when gear input is `1` (HIGH LOAD / LAUNCH)
+- `container-stop.yaml` - Sent when gear input is `0` (LOW LOAD / STOP)
 

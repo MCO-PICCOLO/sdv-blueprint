@@ -78,6 +78,18 @@ configure_and_start() {
     mkdir -p /etc/default
     printf 'TIMPANI_N_ARGS="%s"\n' "${args}" > /etc/default/timpani-n
 
+    # timpani-n does not exit on SIGTERM, so the packaged unit would hang for the
+    # default 90s stop timeout before systemd SIGKILLs it. A drop-in kills it
+    # immediately on stop/restart. (Kept in /etc so a package reinstall of the
+    # unit does not clobber it.)
+    log "Writing timpani-n stop-timeout drop-in..."
+    mkdir -p /etc/systemd/system/timpani-n.service.d
+    cat > /etc/systemd/system/timpani-n.service.d/override.conf <<'EOF'
+[Service]
+KillSignal=SIGKILL
+TimeoutStopSec=5s
+EOF
+
     log "Enabling and starting timpani-n service..."
     systemctl daemon-reload
     systemctl enable timpani-n.service

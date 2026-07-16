@@ -15,7 +15,8 @@ test_script/
 │   ├── prepare_master.sh             # run directly on the master node
 │   └── prepare_guest.sh              # run directly on the guest node
 ├── lib/utils.sh                      # shared functions (SSH wrappers, etc.)
-└── pullpiri/                         # pullpiri install/uninstall scripts, node config
+├── pullpiri/                         # pullpiri install/uninstall scripts, node config
+└── timpani/                          # timpani-o/-n install/uninstall scripts, node config
 ```
 
 ## Prerequisites

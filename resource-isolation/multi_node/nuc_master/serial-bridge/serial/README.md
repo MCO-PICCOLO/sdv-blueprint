@@ -23,7 +23,7 @@ docker compose build
 |----------|---------|-------------|
 | `DATABROKER_IP` | `resiso-databroker` | KUKSA Databroker hostname/IP |
 | `DATABROKER_PORT` | `55555` | KUKSA Databroker port |
-| `MASTER_IP` | `192.168.0.3` | Pullpiri server IP (on Guest) |
+| `MASTER_IP` | `host.docker.internal` | Master's Pullpiri apiserver IP. The compose file injects the auto-detected master IP; falls back to the docker host gateway when unset |
 
 ## Serial Ports
 

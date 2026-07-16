@@ -64,10 +64,14 @@ Both LED controller containers must be running:
 
 ### 4. Load Testing
 
-Run a stress container to simulate CPU load:
+In the demo, CPU load is toggled by pressing the joystick button on the master:
+the kuksa-bridge runs `stress-ng` **directly on the guest host** (see
+[../kuksa-bridge/README.md](../kuksa-bridge/README.md)).
+
+To reproduce the load manually on the guest:
 
 ```bash
-podman run --rm -d stress-ng --cpu 4 --timeout 30s
+stress-ng --cpu 0 --cpu-method all --timeout 30s
 ```
 
 ## Dashboard Panel Description

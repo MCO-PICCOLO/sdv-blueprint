@@ -35,5 +35,6 @@ esac
 
 systemctl daemon-reload 2>/dev/null || true
 rm -f /etc/default/timpani-n
+rm -rf /etc/systemd/system/timpani-n.service.d
 
 log "Done."

@@ -5,8 +5,8 @@ set -euo pipefail
 # The container is created by install-timpani-o.sh as root, so this must run as
 # root too — otherwise `podman rm` targets the rootless store and finds nothing.
 
-log() { echo "[uninstall-timpani] $*"; }
-die() { echo "[uninstall-timpani] ERROR: $*" >&2; exit 1; }
+log() { echo "[uninstall-timpani-o] $*"; }
+die() { echo "[uninstall-timpani-o] ERROR: $*" >&2; exit 1; }
 
 [[ "${EUID}" -eq 0 ]] || die "Please run as root: sudo $0"
 

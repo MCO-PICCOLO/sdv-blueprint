@@ -9,7 +9,7 @@ This folder contains the NUC Master setup for the resource-isolation demonstrati
 The following Docker images must be built beforehand:
 
 - `serial-bridge:latest` - Bridge connecting Arduino and KUKSA/Pullpiri
-- `quay.io/eclipse-kuksa/kuksa-databroker:0.6.0` - KUKSA databroker (official image)
+- `quay.io/eclipse-kuksa/kuksa-databroker:0.6.0` - KUKSA databroker (official image, published on host port `55556` → container `55555`)
 
 ### Build Docker Images
 
@@ -60,7 +60,10 @@ See [arduino](./arduino/README.md) for details
      - state=0 or -1: Only CW allowed → LAUNCH
      - state=1: Only CCW allowed → STOP
      - Invalid direction → RED LED
-   - Sends YAML artifact to Pullpiri via HTTP API (`192.168.0.3:47099/api/artifact`)
+   - Sends YAML artifact to Pullpiri via HTTP API (`http://<MASTER_IP>:47099/api/artifact`).
+     `MASTER_IP` is injected into the `resiso-serial-bridge` container by the
+     orchestrator (auto-detected master IP); it falls back to the docker host
+     gateway when run manually.
 
 ## Components
 
